@@ -22,7 +22,6 @@ METADATA_FILE = "metadata.json"
 def get_all_channel_urls():
     """Pagination ile tüm sayfaları gezerek tüm kanal URL'lerini toplar."""
     all_channel_urls = []
-    max_pages = 50  # Pagination için maksimum sayfa sayısını artırıyoruz
     
     headers = {
         'User-Agent': USER_AGENT,
@@ -31,13 +30,123 @@ def get_all_channel_urls():
     }
     
     try:
-        # Direk sayfa URL formatları - ?sayfa=N formatını kullan
-        direct_page_urls = []
-        # Ana sayfa
-        direct_page_urls.append(BASE_URL)
-        # Sayfa numaralı URL'ler
-        for page_num in range(2, 10):  # 10 sayfaya kadar kontrol et
-            direct_page_urls.append(f"{BASE_URL}?sayfa={page_num}")
+        # Daha verimli yöntem: Kanal sayfasını kullan
+        # Bu sayfa tüm kanal listesini içeriyor
+        main_channel_page = BASE_URL + "trt1-canliyayin"
+        
+        logger.info(f"Ana kanal sayfası yükleniyor: {main_channel_page}")
+        response = requests.get(main_channel_page, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            logger.error(f"Ana kanal sayfası yüklenirken hata: HTTP {response.status_code}")
+            # Eski yönteme geri dön
+            return use_fallback_method()
+        
+        html_content = response.text
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Debug: HTML içeriğini kaydet
+        with open('kanal_sayfasi.html', 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            logger.info("Ana kanal sayfası HTML içeriği kaydedildi")
+        
+        # Sayfanın sol tarafında tüm kanalların listesi var
+        # Tüm linkleri bul
+        all_links = soup.find_all('a', href=True)
+        logger.info(f"Sayfada toplam {len(all_links)} link bulundu")
+        
+        # Kanal linklerini ayıkla
+        for link in all_links:
+            href = link.get('href')
+            
+            # Link içerik kontrolü
+            if not href:
+                continue
+                
+            # Resimli kanal kartlarını kontrol et - Genellikle bunlar gerçek kanal linkleridir
+            has_image = link.find('img')
+            
+            # Kanal URL'lerini kontrol et
+            # 1. ya doğrudan canli-izle içermeli
+            # 2. ya /izle/ içermeli
+            # 3. ya -izle ile bitmeli
+            # 4. ya açıkça belli olan kanal formatında olmalı
+            if (('/canli-izle/' in href or 
+                 '/izle/' in href or 
+                 href.endswith('-izle') or 
+                 href.endswith('-izle/')) or
+                (has_image and not href.startswith('#') and not 'javascript:' in href and
+                 not '/kategori/' in href and not '/etiket/' in href and not '/blog/' in href)):
+                
+                # URL'i normalleştir
+                if not href.startswith('http'):
+                    href = urllib.parse.urljoin(BASE_URL, href)
+                
+                all_channel_urls.append(href)
+                logger.info(f"Kanal URL'si bulundu: {href}")
+        
+        # URL'leri benzersiz hale getir
+        all_channel_urls = list(set(all_channel_urls))
+        logger.info(f"Toplam {len(all_channel_urls)} benzersiz kanal URL'si bulundu")
+        
+        # Eğer hiç URL bulunamadıysa, alternatif metod kullanılacak
+        if not all_channel_urls:
+            logger.warning("Kanal sayfasından URL bulunamadı, alternatif metoda geçiliyor...")
+            return use_fallback_method()
+        
+        return all_channel_urls
+    
+    except Exception as e:
+        logger.error(f"Kanal URL'leri alınırken hata: {str(e)}")
+        logger.warning("Alternatif metod kullanılacak")
+        return use_fallback_method()
+
+def use_fallback_method():
+    """Alternatif URL çıkarma metodu - önceki değişiklikler başarısız olursa"""
+    all_channel_urls = []
+    
+    try:
+        logger.info("Alternatif kanal toplama metodu kullanılıyor...")
+        
+        # Bilinen kanalların listesi
+        static_channels = [
+            BASE_URL + "canli-izle/trt-1",
+            BASE_URL + "canli-izle/show-tv",
+            BASE_URL + "canli-izle/atv",
+            BASE_URL + "canli-izle/fox-tv",
+            BASE_URL + "canli-izle/star-tv",
+            BASE_URL + "canli-izle/kanal-d",
+            BASE_URL + "canli-izle/tv8",
+            BASE_URL + "canli-izle/trt-haber",
+            BASE_URL + "canli-izle/cnn-turk",
+            BASE_URL + "canli-izle/haberturk",
+            BASE_URL + "canli-izle/ntv",
+            BASE_URL + "canli-izle/trt-spor",
+            BASE_URL + "canli-izle/trt-belgesel",
+            BASE_URL + "canli-izle/trt-muzik",
+            BASE_URL + "canli-izle/trt-cocuk",
+            BASE_URL + "canli-izle/trt-avaz",
+            BASE_URL + "canli-izle/a-haber",
+            BASE_URL + "canli-izle/a-spor",
+            # Azerbaycan kanalları
+            BASE_URL + "canli-izle/idman-tv",
+            BASE_URL + "canli-izle/az-tv",
+            BASE_URL + "canli-izle/xezer-tv",
+            BASE_URL + "canli-izle/atv-azad",
+            BASE_URL + "canli-izle/ictimai-tv",
+            BASE_URL + "canli-izle/muz-tv",
+            BASE_URL + "canli-izle/medeniyet-tv",
+            BASE_URL + "canli-izle/space-tv",
+            BASE_URL + "canli-izle/cbc-az-tv",
+            BASE_URL + "canli-izle/real-tv",
+            BASE_URL + "canli-izle/dunya-tv",
+            BASE_URL + "canli-izle/arb-tv",
+            BASE_URL + "canli-izle/arb-24-tv",
+            BASE_URL + "canli-izle/sehiyye-tv",
+            BASE_URL + "canli-izle/aznews-tv",
+            BASE_URL + "canli-izle/gunaz-tv",
+            BASE_URL + "canli-izle/baku-tv",
+        ]
         
         # Kategori URL'leri
         category_urls = [
@@ -51,107 +160,56 @@ def get_all_channel_urls():
             BASE_URL + "kanallar/yerel",
             BASE_URL + "kanallar/yabanci",
             BASE_URL + "kanallar/azerbaycan",
-            BASE_URL + "kanallar/kktc",
-            BASE_URL + "kanallar/diğer-eglence",
-            BASE_URL + "kanallar/avrupa",
-            BASE_URL + "kanallar/almanya",
-            # Eski formatı da koru
-            BASE_URL + "kategori/ulusal/",
-            BASE_URL + "kategori/haber/",
-            BASE_URL + "kategori/spor/",
-            BASE_URL + "kategori/muzik/",
-            BASE_URL + "kategori/cocuk/",
-            BASE_URL + "kategori/dini/",
-            BASE_URL + "kategori/belgesel/",
-            BASE_URL + "kategori/yerel/",
-            BASE_URL + "kategori/yabanci/",
-            BASE_URL + "kategori/azerbaycan/",
-            BASE_URL + "kategori/diğer-eglence/",
         ]
         
-        # Tüm URL'ler - önce direk sayfaları işle
-        all_urls = direct_page_urls + category_urls
-        logger.info(f"Toplam {len(all_urls)} URL işlenecek")
+        headers = {
+            'User-Agent': USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+        }
         
-        # Tüm sayfa URL'lerini işle
-        for page_url in all_urls:
-            logger.info(f"URL işleniyor: {page_url}")
-            
+        # Kategorilerden kanal URL'lerini topla
+        for category_url in category_urls:
             try:
-                response = requests.get(page_url, headers=headers, timeout=15)
+                logger.info(f"Kategori sayfası yükleniyor: {category_url}")
+                response = requests.get(category_url, headers=headers, timeout=10)
                 
-                # 404 sayfası ile karşılaşırsak, bu URL'yi atla
-                if response.status_code == 404:
-                    logger.info(f"Sayfa bulunamadı: {page_url}")
+                if response.status_code != 200:
+                    logger.warning(f"Kategori sayfası yüklenemedi: {category_url}")
                     continue
                 
-                response.raise_for_status()
-                html_content = response.text
+                soup = BeautifulSoup(response.text, 'html.parser')
+                links = soup.find_all('a', href=True)
                 
-                # Sayfadaki tüm kanal kartlarını bul
-                soup = BeautifulSoup(html_content, 'html.parser')
-                
-                # Kanal kartlarını içeren div'leri bul
-                channel_cards = []
-                
-                # Tüm kanal bağlantılarını bul - Kanal kartyaları için
-                channel_card_selectors = [
-                    '.kanal-listesi a', '.tv-channels a', '.channels a',
-                    'div.kanal-kutu a', '.channel-container a', 'div.channel-box a',
-                    '.channel-list a', 'div[class*="kanal"] a', 'div[class*="channel"] a',
-                    '.thumbnail a', 'a.more-link', '.card a', '.tv-card a',
-                    '.item a', 'div.item a', '.list-item a'
-                ]
-                
-                for selector in channel_card_selectors:
-                    card_links = soup.select(selector)
-                    if card_links:
-                        logger.info(f"'{selector}' ile {len(card_links)} kanal kartı bulundu.")
-                        channel_cards.extend(card_links)
-                
-                # Her kanal kartındaki bağlantıları işle
-                for card in channel_cards:
-                    href = card.get('href')
+                for link in links:
+                    href = link.get('href')
                     if href and ('/izle/' in href or '/canli-' in href):
                         if not href.startswith('http'):
                             href = urllib.parse.urljoin(BASE_URL, href)
                         all_channel_urls.append(href)
-                        logger.info(f"Kanal URL'si eklendi: {href}")
-                
-                # Kanal kartları bulunamadıysa, tüm bağlantıları kontrol et
-                if not channel_cards:
-                    logger.info(f"Kanal kartları bulunamadı, tüm linkleri tarıyoruz: {page_url}")
-                    all_links = soup.find_all('a', href=True)
-                    for link in all_links:
-                        href = link.get('href')
-                        if href and ('/izle/' in href or '/canli-' in href):
-                            if not href.startswith('http'):
-                                href = urllib.parse.urljoin(BASE_URL, href)
-                            all_channel_urls.append(href)
-                            logger.info(f"Kanal URL'si eklendi: {href}")
-                
-                logger.info(f"Şu ana kadar toplanan toplam URL: {len(all_channel_urls)}")
-                
-                # Kategoriler arası geçişte 1 saniye bekle
-                time.sleep(1)
+                        logger.info(f"Kategori sayfasından kanal URL'si eklendi: {href}")
             
             except Exception as e:
-                logger.error(f"URL işlenirken hata: {page_url} - {str(e)}")
+                logger.error(f"Kategori sayfası işlenirken hata: {category_url} - {str(e)}")
+        
+        # Statik kanalları ekle
+        all_channel_urls.extend(static_channels)
         
         # URL'leri benzersiz hale getir
         all_channel_urls = list(set(all_channel_urls))
         logger.info(f"Toplam {len(all_channel_urls)} benzersiz kanal URL'si bulundu")
         
-        # Eğer hiç URL bulunamadıysa, debug için sayfayı kaydet
         if not all_channel_urls:
-            logger.error("Hiç kanal URL'si bulunamadı! Site yapısı değişmiş olabilir.")
-            save_debug_html()
-        
+            logger.warning("Hiç kanal URL'si bulunamadı, sadece statik liste kullanılacak")
+            return static_channels
+            
         return all_channel_urls
-    
+        
     except Exception as e:
-        logger.error(f"Kanal URL'leri alınırken hata: {str(e)}")
-        return []
+        logger.error(f"Alternatif kanal toplama yöntemi hata: {str(e)}")
+        # En azından statik listeyi döndür
+        logger.warning("Statik kanal listesi kullanılıyor...")
+        return static_channels
 
 def get_channels():
     """Tüm kanal URL'lerinden kanal bilgilerini oluşturur."""
