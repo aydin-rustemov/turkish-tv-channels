@@ -13,10 +13,8 @@ Bu repo, [canlitv.me](https://www.canlitv.me/hd1) sitesinden Türk ve Azerbaycan
 Kanalları IPTV uygulamanızda kullanmak için aşağıdaki bağlantıyı ekleyin:
 
 ```
-https://raw.githubusercontent.com/KULLANICI_ADI/REPO_ADI/main/kanallar.m3u
+https://raw.githubusercontent.com/aydin-rustemov/turkish-tv-channels/main/kanallar.m3u
 ```
-
-*Not: Yukarıdaki bağlantıyı, kendi GitHub kullanıcı adınız ve repo adınız ile değiştirin.*
 
 ## Lokal Kullanım
 
