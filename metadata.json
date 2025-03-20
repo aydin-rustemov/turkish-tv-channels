@@ -1,6 +1,6 @@
 {
-  "last_updated": "2025-03-20T17:08:00.581971",
-  "channel_count": 9,
+  "last_updated": "2025-03-20T17:19:33.952760",
+  "channel_count": 28,
   "valid_channels": 9,
   "channels": [
     {
@@ -12,24 +12,76 @@
       "url": "https://www.canlitv.me/canli-izle/trt-2"
     },
     {
+      "name": "TRT Spor",
+      "url": "https://www.canlitv.me/canli-izle/trt-spor"
+    },
+    {
       "name": "TRT Haber",
       "url": "https://www.canlitv.me/canli-izle/trt-haber"
+    },
+    {
+      "name": "ATV",
+      "url": "https://www.canlitv.me/canli-izle/atv"
+    },
+    {
+      "name": "Star TV",
+      "url": "https://www.canlitv.me/canli-izle/star-tv"
+    },
+    {
+      "name": "Show TV",
+      "url": "https://www.canlitv.me/canli-izle/show-tv"
     },
     {
       "name": "Kanal D",
       "url": "https://www.canlitv.me/canli-izle/kanal-d"
     },
     {
+      "name": "FOX TV",
+      "url": "https://www.canlitv.me/canli-izle/fox-tv"
+    },
+    {
       "name": "TV8",
       "url": "https://www.canlitv.me/canli-izle/tv8"
+    },
+    {
+      "name": "CNN Türk",
+      "url": "https://www.canlitv.me/canli-izle/cnn-turk"
+    },
+    {
+      "name": "Habertürk",
+      "url": "https://www.canlitv.me/canli-izle/haberturk"
+    },
+    {
+      "name": "A Haber",
+      "url": "https://www.canlitv.me/canli-izle/a-haber"
+    },
+    {
+      "name": "NTV",
+      "url": "https://www.canlitv.me/canli-izle/ntv"
     },
     {
       "name": "TRT Belgesel",
       "url": "https://www.canlitv.me/canli-izle/trt-belgesel"
     },
     {
+      "name": "TRT Çocuk",
+      "url": "https://www.canlitv.me/canli-izle/trt-cocuk"
+    },
+    {
       "name": "TRT Müzik",
       "url": "https://www.canlitv.me/canli-izle/trt-muzik"
+    },
+    {
+      "name": "Kanal 7",
+      "url": "https://www.canlitv.me/canli-izle/kanal-7"
+    },
+    {
+      "name": "TGRT Haber",
+      "url": "https://www.canlitv.me/canli-izle/tgrt-haber"
+    },
+    {
+      "name": "A2",
+      "url": "https://www.canlitv.me/canli-izle/a2"
     },
     {
       "name": "TRT Avaz",
@@ -38,6 +90,30 @@
     {
       "name": "TRT Kurdî",
       "url": "https://www.canlitv.me/canli-izle/trt-kurdi"
+    },
+    {
+      "name": "Beyaz TV",
+      "url": "https://www.canlitv.me/canli-izle/beyaz-tv"
+    },
+    {
+      "name": "ATV Azerbaycan",
+      "url": "https://www.canlitv.me/canli-izle/atv-azerbaycan"
+    },
+    {
+      "name": "İctimai TV",
+      "url": "https://www.canlitv.me/canli-izle/ictimai-tv"
+    },
+    {
+      "name": "CBC Sport",
+      "url": "https://www.canlitv.me/canli-izle/cbc-sport"
+    },
+    {
+      "name": "ARB TV",
+      "url": "https://www.canlitv.me/canli-izle/arb-tv"
+    },
+    {
+      "name": "Space TV",
+      "url": "https://www.canlitv.me/canli-izle/space-tv-azerbaycan"
     }
   ]
 }
