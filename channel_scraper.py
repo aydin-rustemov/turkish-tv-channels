@@ -19,45 +19,10 @@ BASE_URL = "https://www.canlitv.vin/"
 OUTPUT_FILE = "kanallar.m3u"
 METADATA_FILE = "metadata.json"
 
-# Eski bilinen m3u linkleri (yeni site taraması başarısız olursa bunları kullanacağız)
-FALLBACK_CHANNELS = [
-    {"name": "TRT 1", "url": "https://www.canlitv.me/canli-izle/trt-1", "m3u_url": "https://tv-trt1.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT 2", "url": "https://www.canlitv.me/canli-izle/trt-2", "m3u_url": "https://tv-trt2.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT Spor", "url": "https://www.canlitv.me/canli-izle/trt-spor", "m3u_url": "https://tv-trtspor1.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT Haber", "url": "https://www.canlitv.me/canli-izle/trt-haber", "m3u_url": "https://tv-trthaber.medya.trt.com.tr/master.m3u8"},
-    {"name": "ATV", "url": "https://www.canlitv.me/canli-izle/atv", "m3u_url": "https://trkvz-live.ercdn.net/atvhd/atvhd.m3u8"},
-    {"name": "Star TV", "url": "https://www.canlitv.me/canli-izle/star-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/startv/index.m3u8"},
-    {"name": "Show TV", "url": "https://www.canlitv.me/canli-izle/show-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/showtv/index.m3u8"},
-    {"name": "Kanal D", "url": "https://www.canlitv.me/canli-izle/kanal-d", "m3u_url": "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web&ce=3"},
-    {"name": "FOX TV", "url": "https://www.canlitv.me/canli-izle/fox-tv", "m3u_url": "https://foxtv.blutv.com/blutv_foxtv_live/live.m3u8"},
-    {"name": "TV8", "url": "https://www.canlitv.me/canli-izle/tv8", "m3u_url": "https://tv8-live.daioncdn.net/tv8/tv8.m3u8"},
-    {"name": "CNN Türk", "url": "https://www.canlitv.me/canli-izle/cnn-turk", "m3u_url": "https://live.duhnet.tv/S2/HLS_LIVE/cnnturknp/playlist.m3u8"},
-    {"name": "Habertürk", "url": "https://www.canlitv.me/canli-izle/haberturk", "m3u_url": "https://tv.ensonhaber.com/tv/tr/haberturk/index.m3u8"},
-    {"name": "A Haber", "url": "https://www.canlitv.me/canli-izle/a-haber", "m3u_url": "https://trkvz-live.ercdn.net/ahaberhd/ahaberhd.m3u8"},
-    {"name": "NTV", "url": "https://www.canlitv.me/canli-izle/ntv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/ntv/index.m3u8"},
-    {"name": "TRT Belgesel", "url": "https://www.canlitv.me/canli-izle/trt-belgesel", "m3u_url": "https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT Çocuk", "url": "https://www.canlitv.me/canli-izle/trt-cocuk", "m3u_url": "https://tv-trtcocuk.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT Müzik", "url": "https://www.canlitv.me/canli-izle/trt-muzik", "m3u_url": "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"},
-    {"name": "Kanal 7", "url": "https://www.canlitv.me/canli-izle/kanal-7", "m3u_url": "https://live.kanal7.com/live/kanal7LiveDesktop/index.m3u8"},
-    {"name": "TGRT Haber", "url": "https://www.canlitv.me/canli-izle/tgrt-haber", "m3u_url": "https://tv.ensonhaber.com/tv/tr/tgrthaber/index.m3u8"},
-    {"name": "A2", "url": "https://www.canlitv.me/canli-izle/a2", "m3u_url": "https://trkvz-live.ercdn.net/a2hd/a2hd.m3u8"},
-    {"name": "TRT Avaz", "url": "https://www.canlitv.me/canli-izle/trt-avaz", "m3u_url": "https://tv-trtavaz.medya.trt.com.tr/master.m3u8"},
-    {"name": "TRT Kurdî", "url": "https://www.canlitv.me/canli-izle/trt-kurdi", "m3u_url": "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8"},
-    {"name": "Beyaz TV", "url": "https://www.canlitv.me/canli-izle/beyaz-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/beyaztv/index.m3u8"},
-    # Azerbaycan kanalları
-    {"name": "ATV Azerbaycan", "url": "https://www.canlitv.me/canli-izle/atv-azerbaycan", "m3u_url": "http://85.132.81.184:8080/atv/index.m3u8"},
-    {"name": "İctimai TV", "url": "https://www.canlitv.me/canli-izle/ictimai-tv", "m3u_url": "https://insanhaqtv.livebox.co.in/manastvindia/livehls/channel3.m3u8"},
-    {"name": "CBC Sport", "url": "https://www.canlitv.me/canli-izle/cbc-sport", "m3u_url": "https://59c7ea6bec1c6.streamlock.net/live/cbcsport.stream/playlist.m3u8"},
-    {"name": "ARB TV", "url": "https://www.canlitv.me/canli-izle/arb-tv", "m3u_url": "http://85.132.81.184:8080/arb/live/index.m3u8"},
-    {"name": "Space TV", "url": "https://www.canlitv.me/canli-izle/space-tv-azerbaycan", "m3u_url": "http://150.253.219.25:8888/live/Feed222/index.m3u8"}
-]
-
 def get_all_channel_urls():
     """Pagination ile tüm sayfaları gezerek tüm kanal URL'lerini toplar."""
     all_channel_urls = []
-    page = 1
-    max_pages = 10  # Sonsuz döngüyü önlemek için maksimum sayfa sayısını belirleyelim
-    has_more_pages = True
+    max_pages = 50  # Pagination için maksimum sayfa sayısını daha da artırıyoruz
     
     headers = {
         'User-Agent': USER_AGENT,
@@ -72,20 +37,34 @@ def get_all_channel_urls():
             BASE_URL + "kategori/ulusal/",  # Ulusal kanallar
             BASE_URL + "kategori/haber/",   # Haber kanalları
             BASE_URL + "kategori/spor/",    # Spor kanalları
-            BASE_URL + "kategori/azerbaycan/"  # Azerbaycan kanalları
+            BASE_URL + "kategori/muzik/",   # Müzik kanalları
+            BASE_URL + "kategori/cocuk/",   # Çocuk kanalları
+            BASE_URL + "kategori/belgesel/", # Belgesel kanalları
+            BASE_URL + "kategori/azerbaycan/", # Azerbaycan kanalları
+            BASE_URL + "kategori/dini/",    # Dini kanalları
+            BASE_URL + "kategori/yerel/",    # Yerel kanallar
+            BASE_URL + "kategori/sinema/",   # Sinema kanalları
+            BASE_URL + "kategori/belgesel/", # Belgesel kanalları (tekrar kontrol için)
+            BASE_URL + "kategori/eglence/", # Eğlence kanalları
+            BASE_URL + "kategori/yasam/",   # Yaşam kanalları
+            BASE_URL + "kategori/muzik-kanallari/" # Alternatif müzik kanalları URL'si
         ]
         
+        logger.info(f"Toplam {len(category_urls)} kategori işlenecek")
+        
+        # Tüm kategorileri işle
         for category_url in category_urls:
             logger.info(f"Kategori işleniyor: {category_url}")
             page = 1
             has_more_pages = True
+            category_channel_count = 0
             
             while has_more_pages and page <= max_pages:
                 page_url = f"{category_url}page/{page}/" if page > 1 else category_url
                 logger.info(f"Sayfa işleniyor: {page_url}")
                 
                 try:
-                    response = requests.get(page_url, headers=headers)
+                    response = requests.get(page_url, headers=headers, timeout=10)
                     
                     # 404 sayfası ile karşılaşırsak, daha fazla sayfa yoktur
                     if response.status_code == 404:
@@ -94,39 +73,137 @@ def get_all_channel_urls():
                         break
                     
                     response.raise_for_status()
-                    soup = BeautifulSoup(response.text, 'html.parser')
+                    html_content = response.text
                     
-                    # Kanal bağlantılarını bul
-                    channel_links = soup.select('.channels a, .channels-box a, .kanal-kutu a, a[href*="/izle/"]')
+                    # Debug: HTML içeriğinde pagination var mı kontrol et
+                    pagination_exists = False
+                    if 'pagination' in html_content or 'page-numbers' in html_content:
+                        pagination_exists = True
+                        logger.info(f"Pagination bulundu: {pagination_exists}")
                     
+                    soup = BeautifulSoup(html_content, 'html.parser')
+                    
+                    # Kanal bağlantılarını bul - farklı selector'ları dene
+                    channel_links = []
+                    selectors = [
+                        '.channels a', '.channel-box a', '.kanal-kutu a', 
+                        'a[href*="/izle/"]', 'a[href*="/canli-"]',
+                        '.tv-channels a', '.channel-container a',
+                        '.kanal-box a', '.kanal-box > a',
+                        '.kanal-listesi a', '.channel-list a',
+                        'div[class*="channel"] a', 'div[class*="kanal"] a'
+                    ]
+                    
+                    for selector in selectors:
+                        links = soup.select(selector)
+                        if links:
+                            channel_links.extend(links)
+                            logger.info(f"Selector '{selector}' ile {len(links)} kanal bağlantısı bulundu")
+                    
+                    # Hiç bağlantı bulunamadıysa, tüm linkleri kontrol et
                     if not channel_links:
-                        # Alternatif seçiciler dene
-                        channel_links = soup.select('a[href*="/canli-"]')
+                        logger.info("Standart selector'lar başarısız, tüm linkleri tarıyoruz")
+                        all_links = soup.find_all('a', href=True)
+                        for link in all_links:
+                            href = link.get('href', '')
+                            if '/izle/' in href or '/canli-' in href:
+                                channel_links.append(link)
+                        
+                        if channel_links:
+                            logger.info(f"Genel tarama ile {len(channel_links)} kanal bağlantısı bulundu")
                     
                     # Bulunan bağlantıları işle
+                    found_urls = 0
                     for link in channel_links:
                         href = link.get('href')
                         if href and ('/izle/' in href or '/canli-' in href):
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(BASE_URL, href)
                             all_channel_urls.append(href)
+                            found_urls += 1
                     
-                    # Sonraki sayfa kontrolü
-                    next_page = soup.select_one('.pagination a.next, a.next-page, a[rel="next"]')
+                    category_channel_count += found_urls
+                    logger.info(f"Sayfada {found_urls} kanal URL'si bulundu")
+                    
+                    # Sonraki sayfa kontrolü - genişletilmiş kontrol
+                    next_page = None
+                    next_selectors = [
+                        '.pagination a.next', 'a.next-page', 'a[rel="next"]',
+                        '.pagination-next', '.pagination li:last-child a',
+                        'a:contains("Sonraki")', 'a:contains("İleri")',
+                        '.next.page-numbers', '.page-numbers.next',
+                        'li.next a', 'a.nextpostslink',
+                        '.pagination > a:last-child'
+                    ]
+                    
+                    # İlk önce doğrudan sonraki sayfa bağlantısını bulmaya çalış
+                    for selector in next_selectors:
+                        next_candidates = soup.select(selector)
+                        if next_candidates:
+                            next_page = next_candidates[0]
+                            logger.info(f"Sonraki sayfa selector '{selector}' ile bulundu")
+                            break
+                    
                     if not next_page:
-                        has_more_pages = False
-                    else:
+                        # Alternatif 1: sayfa numarasını arayarak bul
+                        page_nums = soup.select('.pagination a, .page-numbers')
+                        current_page_found = False
+                        next_page_exists = False
+                        
+                        for p in page_nums:
+                            try:
+                                if p.get_text().strip() == str(page):
+                                    current_page_found = True
+                                    logger.info(f"Mevcut sayfa {page} bulundu")
+                                elif current_page_found and p.get_text().strip() == str(page + 1):
+                                    next_page_exists = True
+                                    next_page = p
+                                    logger.info(f"Sayfa numarası ile sonraki sayfa {page+1} bulundu")
+                                    break
+                            except:
+                                pass
+                        
+                        if not next_page_exists and not next_page:
+                            # Alternatif 2: Sonraki sayfa URL'sini doğrudan oluştur ve kontrol et
+                            test_next_url = f"{category_url}page/{page+1}/"
+                            try:
+                                test_response = requests.head(test_next_url, headers=headers, timeout=5)
+                                if test_response.status_code == 200:
+                                    has_more_pages = True
+                                    logger.info(f"Sonraki sayfa URL kontrolü başarılı: {test_next_url}")
+                                else:
+                                    has_more_pages = False
+                                    logger.info(f"Sonraki sayfa yok (HTTP {test_response.status_code}): {test_next_url}")
+                            except Exception as e:
+                                logger.warning(f"Sonraki sayfa kontrolü başarısız: {str(e)}")
+                                has_more_pages = False
+                    
+                    # Sonraki sayfaya geç veya döngüyü bitir
+                    if next_page or has_more_pages:
                         page += 1
                         # Her sayfa arasında kısa bir bekleme ekle
-                        time.sleep(1)
+                        logger.info(f"Sonraki sayfaya geçiliyor: {page}")
+                        time.sleep(1.5)  # Biraz daha uzun bekleyelim
+                    else:
+                        logger.info(f"Kategori için son sayfa: {page}")
+                        has_more_pages = False
                         
                 except Exception as e:
                     logger.error(f"Sayfa alınırken hata: {page_url} - {str(e)}")
                     has_more_pages = False
+            
+            logger.info(f"Kategori tamamlandı: {category_url} - {category_channel_count} kanal bulundu")
+            # Kategoriler arası geçişte bekleyelim
+            time.sleep(2)
         
         # URL'leri benzersiz hale getir
         all_channel_urls = list(set(all_channel_urls))
         logger.info(f"Toplam {len(all_channel_urls)} benzersiz kanal URL'si bulundu")
+        
+        # Eğer hiç URL bulunamadıysa, debug için sayfayı kaydet
+        if not all_channel_urls:
+            logger.error("Hiç kanal URL'si bulunamadı! Site yapısı değişmiş olabilir.")
+            save_debug_html()
         
         return all_channel_urls
     
@@ -141,14 +218,57 @@ def get_channels():
         channel_urls = get_all_channel_urls()
         
         if not channel_urls:
-            logger.warning("Hiç kanal URL'si bulunamadı, fallback kanal listesi kullanılıyor")
-            return FALLBACK_CHANNELS
+            logger.error("Hiç kanal URL'si bulunamadı!")
+            return []
         
         # URL'lerden kanal bilgilerini oluştur
         channels = []
         for url in channel_urls:
-            # Kanal adını URL'den çıkar
-            channel_name = url.split('/')[-1].replace('-', ' ').replace('canli', '').replace('izle', '').strip().title()
+            # Kanal adını URL'den çıkar ve düzelt
+            try:
+                # URL'den kanal adını çıkar
+                channel_name = url.split('/')[-1].replace('-', ' ').strip()
+                
+                # "canli" ve "izle" gibi gereksiz kelimeleri kaldır
+                for word in ['canli', 'izle', 'live', 'watch', 'tv', 'online', 'hd']:
+                    channel_name = channel_name.replace(word, '').strip()
+                
+                # Fazladan boşlukları temizle
+                channel_name = ' '.join(channel_name.split())
+                
+                # Azerbaycan kanalları için özel işleme
+                if 'azerbaycan' in url.lower() or 'azeri' in url.lower():
+                    if 'azerbaycan' not in channel_name.lower() and 'azeri' not in channel_name.lower():
+                        channel_name = f"{channel_name} (Azerbaycan)"
+                
+                # İlk harfleri büyük yap, ancak yaygın kısaltmalara dikkat et
+                words = channel_name.split()
+                capitalized_words = []
+                
+                for word in words:
+                    # TRT, CNN, NTV gibi kısaltmalar büyük harfle yazılır
+                    if len(word) <= 3 and word.lower() not in ['ve', 'ile', 'bir', 'the', 'and']:
+                        capitalized_words.append(word.upper())
+                    else:
+                        capitalized_words.append(word.capitalize())
+                
+                channel_name = ' '.join(capitalized_words)
+                
+                # Kanal D, Show TV gibi özel formatları düzelt
+                for special_name in ['Kanal D', 'Show TV', 'Fox TV', 'Star TV', 'TV 8', 'TRT 1', 'TRT 2']:
+                    lower_name = channel_name.lower()
+                    lower_special = special_name.lower()
+                    if lower_special.replace(' ', '') in lower_name.replace(' ', ''):
+                        channel_name = special_name
+                        break
+                
+                # "TV" formatını normalize et
+                channel_name = channel_name.replace('Tv', 'TV')
+                
+            except:
+                # Hata durumunda basit isimlendirme kullan
+                channel_name = url.split('/')[-1].replace('-', ' ').title()
+            
             channels.append({
                 'name': channel_name,
                 'url': url,
@@ -160,17 +280,11 @@ def get_channels():
         
     except Exception as e:
         logger.error(f"Kanal bilgileri oluşturulurken hata: {str(e)}")
-        logger.warning("Fallback kanal listesi kullanılıyor")
-        return FALLBACK_CHANNELS
+        return []
 
 def extract_m3u_url(channel_info):
-    """Channel için m3u URL döndürür"""
-    # Kanal zaten m3u_url içeriyorsa onu kullan
-    if channel_info.get('m3u_url'):
-        logger.info(f"Bilinen M3U URL kullanılıyor: {channel_info['name']}")
-        return channel_info['m3u_url']
-    
-    # Aksi halde web sayfasından çekmeye çalış
+    """Channel için m3u veya m3u8 URL döndürür"""
+    # Web sayfasından çekmeye çalış
     try:
         headers = {
             'User-Agent': USER_AGENT,
@@ -179,11 +293,16 @@ def extract_m3u_url(channel_info):
         }
         
         logger.info(f"İşleniyor: {channel_info['name']} - {channel_info['url']}")
-        response = requests.get(channel_info['url'], headers=headers)
-        response.raise_for_status()
-        html_content = response.text
         
-        # m3u/m3u8 URL'leri için regex pattern'leri
+        try:
+            response = requests.get(channel_info['url'], headers=headers, timeout=10)
+            response.raise_for_status()
+            html_content = response.text
+        except Exception as e:
+            logger.error(f"Sayfa alınırken hata: {channel_info['url']} - {str(e)}")
+            return None
+        
+        # m3u/m3u8 URL'leri için regex pattern'leri - daha kapsamlı
         patterns = [
             r'source:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
             r'file:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
@@ -192,16 +311,73 @@ def extract_m3u_url(channel_info):
             r'hls:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
             r'videoSrc\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
             r'video\s*src\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'url:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'playlist:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'hlsUrl\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'streamURL\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'["\'](https?://[^\'"\s]+/playlist\.m3u[8]?)[\'"]',
+            r'["\'](https?://[^\'"\s]+/manifest\.m3u[8]?)[\'"]',
+            r'["\'](https?://[^\'"\s]+/live\.m3u[8]?)[\'"]',
+            r'["\'](https?://[^\'"\s]+/index\.m3u[8]?)[\'"]',
+            r'["\'](https?://[^\'"\s]+/master\.m3u[8]?)[\'"]',
+            r'["\'](https?://[^\'"\s]+/stream\.m3u[8]?)[\'"]',
+            r'source\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'data-source=[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'data-url=[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'data-stream=[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
         ]
+        
+        # Bilinen özel kanalları kontrol et
+        channel_name_lower = channel_info['name'].lower()
+        
+        # TRT kanalları için bilinen URL'leri kontrol et
+        if 'trt' in channel_name_lower:
+            if 'trt 1' in channel_name_lower or 'trt1' in channel_name_lower:
+                logger.info(f"TRT 1 için bilinen URL kullanılıyor")
+                return "https://tv-trt1.medya.trt.com.tr/master.m3u8"
+            elif 'trt 2' in channel_name_lower or 'trt2' in channel_name_lower:
+                logger.info(f"TRT 2 için bilinen URL kullanılıyor")
+                return "https://tv-trt2.medya.trt.com.tr/master.m3u8"
+            elif 'trt spor' in channel_name_lower:
+                logger.info(f"TRT Spor için bilinen URL kullanılıyor")
+                return "https://tv-trtspor1.medya.trt.com.tr/master.m3u8"
+            elif 'trt haber' in channel_name_lower:
+                logger.info(f"TRT Haber için bilinen URL kullanılıyor")
+                return "https://tv-trthaber.medya.trt.com.tr/master.m3u8"
+            elif 'trt belgesel' in channel_name_lower:
+                logger.info(f"TRT Belgesel için bilinen URL kullanılıyor")
+                return "https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8"
+            elif 'trt çocuk' in channel_name_lower:
+                logger.info(f"TRT Çocuk için bilinen URL kullanılıyor")
+                return "https://tv-trtcocuk.medya.trt.com.tr/master.m3u8"
+            elif 'trt müzik' in channel_name_lower:
+                logger.info(f"TRT Müzik için bilinen URL kullanılıyor")
+                return "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"
+            elif 'trt avaz' in channel_name_lower:
+                logger.info(f"TRT Avaz için bilinen URL kullanılıyor")
+                return "https://tv-trtavaz.medya.trt.com.tr/master.m3u8"
+            elif 'trt kurd' in channel_name_lower:
+                logger.info(f"TRT Kurdî için bilinen URL kullanılıyor")
+                return "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8"
+        
+        # Diğer bilinen kanallar
+        elif 'kanal d' in channel_name_lower:
+            logger.info(f"Kanal D için bilinen URL kullanılıyor")
+            return "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web&ce=3"
+        elif 'tv8' in channel_name_lower.replace(' ', ''):
+            logger.info(f"TV8 için bilinen URL kullanılıyor")
+            return "https://tv8-live.daioncdn.net/tv8/tv8.m3u8"
         
         # Tüm pattern'leri dene
         for pattern in patterns:
             matches = re.findall(pattern, html_content)
             if matches:
-                # İlk eşleşmeyi kullan
-                m3u_url = matches[0]
-                logger.info(f"M3U URL bulundu: {m3u_url}")
-                return m3u_url
+                for match in matches:
+                    # m3u ya da m3u8 uzantılı dosyaya denk gelmişsek kullan
+                    if '.m3u' in match:
+                        m3u_url = match
+                        logger.info(f"M3U URL bulundu: {m3u_url}")
+                        return m3u_url
         
         # İframe kontrol et
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -219,15 +395,17 @@ def extract_m3u_url(channel_info):
                 iframe_response = requests.get(iframe_src, headers={
                     'User-Agent': USER_AGENT,
                     'Referer': channel_info['url']
-                })
+                }, timeout=8)
                 iframe_content = iframe_response.text
                 
                 for pattern in patterns:
                     matches = re.findall(pattern, iframe_content)
                     if matches:
-                        m3u_url = matches[0]
-                        logger.info(f"İframe içinde M3U URL bulundu: {m3u_url}")
-                        return m3u_url
+                        for match in matches:
+                            if '.m3u' in match:
+                                m3u_url = match
+                                logger.info(f"İframe içinde M3U URL bulundu: {m3u_url}")
+                                return m3u_url
             except Exception as e:
                 logger.warning(f"İframe içeriği alınırken hata: {e}")
         
@@ -265,7 +443,10 @@ def create_m3u_file(channels):
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             f.write("#EXTM3U\n")
             
-            for channel in channels:
+            # Önce Türk, sonra Azerbaycan kanallarını sırala
+            sorted_channels = sorted(channels, key=lambda c: determine_channel_priority(c))
+            
+            for channel in sorted_channels:
                 if channel.get('m3u_url'):
                     # URL'lerde http yoksa ekleyelim
                     m3u_url = channel['m3u_url']
@@ -280,6 +461,50 @@ def create_m3u_file(channels):
     except Exception as e:
         logger.error(f"M3U dosyası oluşturulurken hata: {e}")
         return False
+
+def determine_channel_priority(channel):
+    """Kanal sıralama önceliğini belirler. 
+    Türk kanalları önce, Azerbaycan kanalları sonra, diğerleri en sonda."""
+    name = channel['name'].lower()
+    
+    # Ulusal Türk kanalları önce
+    national_turkish = ['trt 1', 'trt1', 'atv', 'show tv', 'showtv', 'star tv', 'startv', 'kanal d', 'kanald', 'fox tv', 'foxtv', 'tv8', 'tv 8']
+    for prefix in national_turkish:
+        if name.startswith(prefix) or name.replace(' ', '') == prefix.replace(' ', ''):
+            return 0
+            
+    # TRT kanalları grubu
+    if 'trt' in name:
+        return 1
+    
+    # Haber kanalları grubu
+    news_channels = ['haber', 'cnn', 'ntv', 'haberturk', 'haber türk', 'a haber', 'tgrt']
+    for news in news_channels:
+        if news in name:
+            return 2
+    
+    # Spor kanalları grubu
+    sports_channels = ['spor', 'sport', 'sports', 'futbol', 'gol', 'goal']
+    for sport in sports_channels:
+        if sport in name:
+            return 3
+    
+    # Müzik kanalları grubu
+    music_channels = ['müzik', 'muzik', 'music', 'number one', 'numberone', 'powertürk', 'powerturk', 'kral']
+    for music in music_channels:
+        if music in name:
+            return 4
+    
+    # Diğer Türk kanalları
+    if 'türk' in name or 'turk' in name:
+        return 5
+        
+    # Azerbaycan kanalları
+    if 'azerbaycan' in name or 'azeri' in name or 'aztv' in name or 'az tv' in name or '(azerbaycan)' in name:
+        return 6
+            
+    # Diğer tüm kanallar
+    return 7
 
 def create_metadata(channels, valid_count):
     """Güncel metadata bilgisini JSON dosyasına yazar."""
@@ -315,29 +540,78 @@ def check_m3u_urls(channels):
     valid_channels = []
     invalid_channels = []
     
-    for channel in channels:
-        if not channel.get('m3u_url'):
-            continue
-            
-        try:
-            m3u_url = channel['m3u_url']
-            if not m3u_url.startswith('http'):
-                m3u_url = urllib.parse.urljoin(BASE_URL, m3u_url)
-                
-            response = requests.head(m3u_url, timeout=5)
-            if response.status_code < 400:
-                channel['m3u_url'] = m3u_url  # Tam URL'yi güncelle
-                valid_channels.append(channel)
-                logger.info(f"Geçerli M3U URL: {channel['name']} - {m3u_url}")
-            else:
-                invalid_channels.append(channel)
-                logger.warning(f"Geçersiz M3U URL (HTTP {response.status_code}): {channel['name']} - {m3u_url}")
-        except Exception as e:
-            invalid_channels.append(channel)
-            logger.warning(f"M3U URL kontrolü hatası: {channel['name']} - {channel.get('m3u_url')} - {e}")
+    logger.info(f"Toplam {len([c for c in channels if c.get('m3u_url')])} m3u URL'si kontrol edilecek")
     
-    logger.info(f"Geçerli M3U URL sayısı: {len(valid_channels)}/{len([c for c in channels if c.get('m3u_url')])}")
-    return valid_channels
+    # İki denemede kontrol et - ilk denemede başarısız olanları ikinci denemede tekrar dene
+    for attempt in range(2):
+        channels_to_check = channels if attempt == 0 else invalid_channels
+        invalid_channels = []
+        
+        for channel in channels_to_check:
+            if not channel.get('m3u_url'):
+                continue
+                
+            try:
+                m3u_url = channel['m3u_url']
+                if not m3u_url.startswith('http'):
+                    m3u_url = urllib.parse.urljoin(BASE_URL, m3u_url)
+                
+                # HEAD isteği ile kontrol et
+                try:
+                    head_response = requests.head(m3u_url, timeout=8, allow_redirects=True)
+                    
+                    # Bazı sunucular HEAD isteklerini desteklemez, bu durumda GET kullanmayı dene
+                    if head_response.status_code >= 400:
+                        logger.info(f"HEAD isteği başarısız, GET deneniyor: {channel['name']}")
+                        get_response = requests.get(m3u_url, timeout=8, stream=True)
+                        
+                        # İlk birkaç baytı oku ve bağlantıyı kapat
+                        if get_response.status_code < 400:
+                            for chunk in get_response.iter_content(chunk_size=1024):
+                                if chunk:
+                                    break
+                            get_response.close()
+                            
+                            channel['m3u_url'] = m3u_url  # Tam URL'yi güncelle
+                            valid_channels.append(channel)
+                            logger.info(f"Geçerli M3U URL (GET): {channel['name']} - {m3u_url}")
+                            continue
+                    
+                    # HEAD isteği başarılıysa
+                    if head_response.status_code < 400:
+                        channel['m3u_url'] = m3u_url  # Tam URL'yi güncelle
+                        valid_channels.append(channel)
+                        logger.info(f"Geçerli M3U URL (HEAD): {channel['name']} - {m3u_url}")
+                    else:
+                        invalid_channels.append(channel)
+                        logger.warning(f"Geçersiz M3U URL (HTTP {head_response.status_code}): {channel['name']} - {m3u_url}")
+                
+                except Exception as e:
+                    # Bağlantı hatası, ikinci denemede farklı yöntem kullanacağız
+                    invalid_channels.append(channel)
+                    logger.warning(f"M3U URL kontrolü hatası: {channel['name']} - {e}")
+            
+            except Exception as e:
+                logger.error(f"Genel hata: {channel['name']} - {str(e)}")
+                
+        logger.info(f"Deneme {attempt+1} - Geçerli URL: {len(valid_channels)}, Geçersiz URL: {len(invalid_channels)}")
+        
+        # Bir sonraki tur için geçersizleri tekrar kontrol et
+        if attempt == 0 and invalid_channels:
+            logger.info(f"Geçersiz {len(invalid_channels)} URL ikinci kez kontrol edilecek")
+            time.sleep(2)  # İkinci deneme öncesi bekle
+    
+    # Duplikasyonları temizle
+    unique_valid_channels = []
+    seen_urls = set()
+    
+    for channel in valid_channels:
+        if channel['m3u_url'] not in seen_urls:
+            seen_urls.add(channel['m3u_url'])
+            unique_valid_channels.append(channel)
+    
+    logger.info(f"Geçerli benzersiz M3U URL sayısı: {len(unique_valid_channels)}/{len([c for c in channels if c.get('m3u_url')])}")
+    return unique_valid_channels
 
 def main():
     logger.info("Kanal çekme işlemi başlıyor...")
@@ -352,18 +626,31 @@ def main():
         logger.error("Hiç kanal bulunamadı!")
         return False
     
-    # Kanallardan örnek olarak ilk 50 tanesini işle (çok fazla istek atmamak için)
-    channels_to_process = channels[:150]  # Daha fazla kanal işlemek için sayıyı artırabilirsiniz
+    # Tüm kanalları işlemek için maksimum sayıyı artır
+    max_channels = 1000  # İşlenecek maksimum kanal sayısını artırıyoruz
+    channels_to_process = channels[:max_channels]
     logger.info(f"İşlenecek kanal sayısı: {len(channels_to_process)}/{len(channels)}")
+    
+    # Kanal listesini karıştır, popüler kanalları önceliklendirmeye çalışalım
+    def prioritize_channels(channel):
+        # TRT, ATV, gibi ana kanalları önceliklendir
+        name = channel['name'].lower()
+        for prefix in ['trt', 'atv', 'show', 'star', 'kanal d', 'fox', 'tv8']:
+            if prefix in name:
+                return 0
+        return 1
+        
+    # Kanalları önceliklendir
+    channels_to_process.sort(key=prioritize_channels)
     
     # Her kanal için m3u URL'sini çıkar
     for i, channel in enumerate(channels_to_process):
         if not channel.get('m3u_url'):  # Zaten m3u_url yoksa ekle
             channel['m3u_url'] = extract_m3u_url(channel)
         
-        # Her 3 kanalda bir 2 saniye bekle (site koruması için)
-        if (i + 1) % 3 == 0:
-            logger.info(f"Rate limiting: 2 saniye bekleniyor...")
+        # Rate limiting - her 5 kanalda bir 2 saniye bekle
+        if (i + 1) % 5 == 0:
+            logger.info(f"İşlenen: {i+1}/{len(channels_to_process)} - Rate limiting: 2 saniye bekleniyor...")
             time.sleep(2)
     
     # İşlenen kanalları ana listeye ekle
@@ -373,11 +660,6 @@ def main():
     
     # Geçerli M3U URL'leri olan kanalları kontrol et
     valid_channels = check_m3u_urls([c for c in channels if c.get('m3u_url')])
-    
-    # Geçerli URL'si olan kanal yoksa fallback listeyi kullan
-    if not valid_channels:
-        logger.warning("Hiç geçerli M3U URL'si bulunamadı, fallback kanal listesi kullanılıyor")
-        valid_channels = check_m3u_urls(FALLBACK_CHANNELS)
     
     # M3U dosyasını oluştur
     create_m3u_file(valid_channels)
