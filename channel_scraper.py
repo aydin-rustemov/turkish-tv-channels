@@ -339,6 +339,21 @@ def extract_m3u_url(channel_info):
         # HTML içeriğini analiz et
         soup = BeautifulSoup(html_content, 'html.parser')
         
+        # ÖZEL İŞLEME: canlitv.vin için geolive.php iframeler (yüksek öncelik)
+        geolive_iframe = None
+        iframes = soup.find_all('iframe')
+        for iframe in iframes:
+            iframe_src = iframe.get('src', '')
+            if 'geolive.php' in iframe_src and 'kanal=' in iframe_src:
+                geolive_iframe = iframe_src
+                logger.info(f"GeoLive iframe bulundu: {geolive_iframe}")
+                break
+        
+        if geolive_iframe:
+            geolive_m3u = process_geolive_iframe(geolive_iframe, channel_info['url'])
+            if geolive_m3u:
+                return geolive_m3u
+        
         # 1. kanallar.php iframe'ini bul - canlitv.vin'in özel formatı
         iframes = soup.find_all('iframe')
         for iframe in iframes:
@@ -643,6 +658,192 @@ def extract_m3u_url(channel_info):
         logger.error(f"M3U URL çıkarılırken genel hata: {str(e)}")
         return None
 
+def process_geolive_iframe(iframe_url, referer_url):
+    """canlitv.vin sitesinin geolive.php iframe'ini özel olarak işler"""
+    try:
+        logger.info(f"GeoLive iframe işleniyor: {iframe_url}")
+        
+        # URL'yi normalize et
+        if not iframe_url.startswith('http'):
+            if iframe_url.startswith('//'):
+                iframe_url = 'https:' + iframe_url
+            else:
+                iframe_url = urllib.parse.urljoin(BASE_URL, iframe_url)
+        
+        # Geolive sayfasını getir
+        headers = {
+            'User-Agent': USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Referer': referer_url,
+            'Origin': BASE_URL,
+        }
+        
+        response = requests.get(iframe_url, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            logger.warning(f"GeoLive iframe alınamadı: HTTP {response.status_code}")
+            return None
+        
+        # Debug için sayfayı kaydet
+        debug_file = f"debug_geolive_{iframe_url.split('kanal=')[1].split('&')[0]}.html"
+        with open(debug_file, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+            logger.info(f"GeoLive iframe içeriği kaydedildi: {debug_file}")
+        
+        # İçerikten m3u bağlantısını ara
+        iframe_content = response.text
+        
+        # 1. Doğrudan embedDecode fonksiyonunu ara
+        embed_decode_pattern = r'embedDecode\("([^"]+)"\)'
+        embed_matches = re.findall(embed_decode_pattern, iframe_content)
+        
+        if embed_matches:
+            encoded_content = embed_matches[0]
+            try:
+                # Base64 kodlu içeriği çöz
+                import base64
+                decoded_content = base64.b64decode(encoded_content).decode('utf-8')
+                logger.info(f"Çözülen embedDecode içeriği: {decoded_content}")
+                
+                # Çözülen içerikten m3u URL'sini çıkar
+                m3u_url = find_m3u_in_content(decoded_content)
+                if m3u_url:
+                    logger.info(f"embedDecode içinden m3u URL bulundu: {m3u_url}")
+                    return m3u_url
+            except Exception as decode_error:
+                logger.warning(f"embedDecode çözme hatası: {decode_error}")
+        
+        # 2. Vidogevideo değişkenini ara
+        vidogevideo_pattern = r'var vidogevideo\s*=\s*[\'"]([^\'"]*)[\'"]'
+        vidogevideo_matches = re.findall(vidogevideo_pattern, iframe_content)
+        
+        if vidogevideo_matches:
+            video_url = vidogevideo_matches[0]
+            if '.m3u' in video_url:
+                logger.info(f"vidogevideo değişkeninden m3u URL bulundu: {video_url}")
+                return video_url
+        
+        # 3. Diğer Player URL'lerini ara (script içinde)
+        player_url_patterns = [
+            r'player\.src\(\{\s*src:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'player\.src\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'file:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'source:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'src=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'source\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        ]
+        
+        for pattern in player_url_patterns:
+            matches = re.findall(pattern, iframe_content)
+            if matches:
+                for match in matches:
+                    if '.m3u' in match:
+                        logger.info(f"Player URL patterninden m3u URL bulundu: {match}")
+                        return match
+        
+        # 4. JSON içindeki URL'leri ara
+        json_url_pattern = r'[{,]\s*["\'](?:file|src|source|url|stream|hlsUrl)["\']:\s*["\']([^"\']*\.m3u[^"\']*)["\']'
+        json_matches = re.findall(json_url_pattern, iframe_content)
+        
+        if json_matches:
+            for match in json_matches:
+                if '.m3u' in match:
+                    logger.info(f"JSON içinden m3u URL bulundu: {match}")
+                    return match
+        
+        # 5. Sayfayı daha derin analiz et ve iframe'leri kontrol et
+        soup = BeautifulSoup(iframe_content, 'html.parser')
+        
+        # Nested iframe'leri kontrol et
+        nested_iframes = soup.find_all('iframe')
+        for nested_iframe in nested_iframes:
+            nested_src = nested_iframe.get('src')
+            if nested_src and nested_src != 'about:blank':
+                logger.info(f"GeoLive içinde nested iframe bulundu: {nested_src}")
+                
+                # Normalize URL
+                if not nested_src.startswith('http'):
+                    if nested_src.startswith('//'):
+                        nested_src = 'https:' + nested_src
+                    else:
+                        nested_src = urllib.parse.urljoin(iframe_url, nested_src)
+                
+                try:
+                    nested_headers = headers.copy()
+                    nested_headers['Referer'] = iframe_url
+                    
+                    nested_response = requests.get(nested_src, headers=nested_headers, timeout=10)
+                    if nested_response.status_code == 200:
+                        nested_content = nested_response.text
+                        
+                        # Debug için kaydet
+                        nested_debug_file = f"debug_nested_iframe_{nested_src.split('/')[-1].split('?')[0]}.html"
+                        with open(nested_debug_file, 'w', encoding='utf-8') as f:
+                            f.write(nested_content)
+                        
+                        # İçerikten m3u URL'sini ara
+                        m3u_url = find_m3u_in_content(nested_content)
+                        if m3u_url:
+                            logger.info(f"Nested iframe içinden m3u URL bulundu: {m3u_url}")
+                            return m3u_url
+                except Exception as nested_error:
+                    logger.warning(f"Nested iframe hatası: {nested_error}")
+        
+        # 6. Sayfa içindeki tüm videoları kontrol et
+        video_tags = soup.find_all('video')
+        for video in video_tags:
+            video_src = video.get('src')
+            if video_src and ('.m3u' in video_src or '.m3u8' in video_src):
+                logger.info(f"Video tag'inden m3u URL bulundu: {video_src}")
+                return video_src
+            
+            # Video source'larını kontrol et
+            sources = video.find_all('source')
+            for source in sources:
+                source_src = source.get('src')
+                if source_src and ('.m3u' in source_src or '.m3u8' in source_src):
+                    logger.info(f"Video source tag'inden m3u URL bulundu: {source_src}")
+                    return source_src
+        
+        # 7. Script taglerindeki evalatob kodunu çözmeyi dene
+        script_tags = soup.find_all('script')
+        for script in script_tags:
+            script_content = script.string
+            if script_content and 'atob(' in script_content:
+                try:
+                    # Atob fonksiyonlarını bul
+                    atob_pattern = r'atob\([\'"]([^\'"]+)[\'"]\)'
+                    atob_matches = re.findall(atob_pattern, script_content)
+                    
+                    for encoded in atob_matches:
+                        try:
+                            import base64
+                            decoded = base64.b64decode(encoded).decode('utf-8')
+                            logger.info(f"Atob çözüldü: {decoded}")
+                            
+                            # Çözülen içerikten m3u URL'sini ara
+                            m3u_url = find_m3u_in_content(decoded)
+                            if m3u_url:
+                                logger.info(f"Atob çözümünden m3u URL bulundu: {m3u_url}")
+                                return m3u_url
+                        except Exception as decode_error:
+                            logger.warning(f"Atob çözme hatası: {decode_error}")
+                except Exception as script_error:
+                    logger.warning(f"Script çözme hatası: {script_error}")
+        
+        # 8. Son çare: tüm içerikte m3u ara
+        m3u_url = find_m3u_in_content(iframe_content)
+        if m3u_url:
+            logger.info(f"Genel içerik taramasından m3u URL bulundu: {m3u_url}")
+            return m3u_url
+        
+        logger.warning(f"GeoLive iframe'inde m3u URL bulunamadı")
+        return None
+        
+    except Exception as e:
+        logger.error(f"GeoLive iframe işleme hatası: {str(e)}")
+        return None
+
 def extract_with_ytdlp(url):
     """yt-dlp kullanarak m3u8 linkini çıkarır"""
     try:
@@ -736,7 +937,99 @@ def find_m3u_in_content(content):
         r'hls_url[\'"\s:=]+([^\'"\s]+\.m3u[8]?[^\'"\s]*)',
         r'hlsURL[\'"\s:=]+([^\'"\s]+\.m3u[8]?[^\'"\s]*)',
         r'videoURL[\'"\s:=]+([^\'"\s]+\.m3u[8]?[^\'"\s]*)',
+        
+        # canlitv.vin özel desenleri
+        r'var\s+vidogevideo\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'var\s+kaynakurl\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'var\s+url\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'var\s+videolink\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'var\s+m3ulink\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'var\s+str\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'videojs\([^\)]+\)\.src\(\{\s*src:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'if\s*\((\s*a\s*\+\s*b\s*\+\s*c\s*\+\s*d\s*\+\s*e\s*\+\s*f\s*)\)',
+        r'player\.src\(\{\s*src:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'player\.src\s*=\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        r'jwplayer\([^\)]+\)\.setup\(\{\s*[^\{\}]*file:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+        
+        # Obfuscated JavaScript için
+        r'\\x68\\x74\\x74\\x70([^\'"]*.m3u[8]?[^\'"]*)',
+        r'\\u0068\\u0074\\u0074\\u0070([^\'"]*.m3u[8]?[^\'"]*)',
     ]
+    
+    # Önce sayfada görülen string birleştirme işlemlerini tespit etmeye çalış
+    # Bu tür JavaScript kod obfuscation tekniklerini çözmeye çalışır
+    js_concat_patterns = [
+        r'((?:[a-zA-Z0-9_$]+\s*\+\s*){2,}[a-zA-Z0-9_$]+)',  # a + b + c formatı
+        r'(\[[^\[\]]+\]\.join\(\s*[\'"][\'"]?\s*\))',  # ["h","t","t","p"].join("") formatı
+        r'String\.fromCharCode\(([^\)]+)\)',  # String.fromCharCode(104,116,116,112) formatı
+    ]
+    
+    for concat_pattern in js_concat_patterns:
+        concat_matches = re.findall(concat_pattern, content)
+        for concat_expr in concat_matches:
+            # Eğer bu bir join ifadesi ise
+            if '.join(' in concat_expr:
+                try:
+                    # ["h","t","t","p"].join("")
+                    array_str = concat_expr.split('.join(')[0].strip()
+                    # Basit bir JavaScript array parsing
+                    if array_str.startswith('[') and array_str.endswith(']'):
+                        array_items = re.findall(r'[\'"]([^\'"]*)[\'"]', array_str)
+                        combined = ''.join(array_items)
+                        if '.m3u' in combined:
+                            return combined
+                except Exception as e:
+                    logger.warning(f"Join ifadesi çözülemedi: {e}")
+            
+            # String.fromCharCode işlemi ise
+            elif 'String.fromCharCode' in concat_expr:
+                try:
+                    # String.fromCharCode(104,116,116,112)
+                    char_codes = re.findall(r'(\d+)', concat_expr)
+                    if char_codes:
+                        chars = [chr(int(code)) for code in char_codes]
+                        combined = ''.join(chars)
+                        if '.m3u' in combined:
+                            return combined
+                except Exception as e:
+                    logger.warning(f"fromCharCode ifadesi çözülemedi: {e}")
+            
+            # Basit string birleştirme ise (a + b + c)
+            else:
+                # JavaScript değişken birleştirme işlemleri için daha derin analiz gerekebilir
+                # Bu örnek için sadece sayfada gördüğümüz içeriği analiz ediyoruz
+                # Gerçek bir çözüm için JavaScript parsing/execution gerekebilir
+                pass
+    
+    # canlitv.vin'de özel olarak kullanılan string birleştirme yöntemini tespit et
+    concat_str_pattern = r'([\'"](https?:)?/?/?[^\'"]*[\'"])\s*\+\s*([\'"](/[^\'"]*\.m3u[8]?[^\'"]*)[\'"])'
+    concat_matches = re.findall(concat_str_pattern, content)
+    for match in concat_matches:
+        try:
+            part1 = match[0].strip('\'"')
+            part2 = match[3].strip('\'"')
+            combined = part1 + part2
+            if '.m3u' in combined:
+                logger.info(f"String birleştirme tespit edildi: {combined}")
+                return combined
+        except Exception as e:
+            logger.warning(f"String birleştirme çözülemedi: {e}")
+    
+    # Base64 kodlu içerik arama
+    base64_pattern = r'atob\([\'"]([^\'"]+)[\'"]\)'
+    base64_matches = re.findall(base64_pattern, content)
+    for encoded in base64_matches:
+        try:
+            import base64
+            decoded = base64.b64decode(encoded).decode('utf-8')
+            logger.info(f"Base64 çözüldü: {decoded[:50]}...")
+            
+            # Çözülen içerikte m3u arama
+            m3u_in_decoded = find_m3u_in_content(decoded)
+            if m3u_in_decoded:
+                return m3u_in_decoded
+        except Exception as e:
+            logger.warning(f"Base64 çözme hatası: {e}")
     
     # Tüm pattern'leri dene
     for pattern in patterns:
@@ -744,10 +1037,23 @@ def find_m3u_in_content(content):
         if matches:
             for match in matches:
                 # m3u ya da m3u8 uzantılı dosyaya denk gelmişsek kullan
-                if '.m3u' in match:
-                    m3u_url = match
-                    logger.info(f"M3U URL bulundu: {m3u_url}")
-                    return m3u_url
+                if isinstance(match, tuple):  # Eğer pattern gruplar içeriyorsa
+                    for group in match:
+                        if group and '.m3u' in group:
+                            logger.info(f"M3U URL bulundu (grup): {group}")
+                            return group
+                elif match and '.m3u' in match:
+                    logger.info(f"M3U URL bulundu: {match}")
+                    return match
+    
+    # Son çare olarak .m3u veya .m3u8 içeren herhangi bir URL'yi bul
+    all_urls = re.findall(r'[\'"\(]((https?:)?//[^\'"\s\)]+)[\'"\)]', content)
+    for url in all_urls:
+        if isinstance(url, tuple):
+            url = url[0]
+        if '.m3u' in url:
+            logger.info(f"Genel URL aramasında m3u bulundu: {url}")
+            return url
     
     return None
 
