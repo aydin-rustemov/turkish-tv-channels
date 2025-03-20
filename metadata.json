@@ -1,15 +1,71 @@
 {
-  "last_updated": "2025-03-20T17:59:09.813705",
-  "channel_count": 37,
-  "valid_channels": 2,
+  "last_updated": "2025-03-20T18:02:27.849717",
+  "channel_count": 33,
+  "valid_channels": 8,
   "channels": [
     {
-      "name": "TRT Avaz",
-      "url": "https://www.canlitv.vin/trt-avaz-izle"
+      "name": "TRT 1",
+      "url": "https://www.canlitv.vin/blog/trt-1-sifresiz-nasil-izlenir"
     },
     {
-      "name": "TRT Kurdi",
-      "url": "https://www.canlitv.vin/trt-kurdi-izle"
+      "name": "Kanal D",
+      "url": "https://www.canlitv.vin/kanal-d-canli-yayin"
+    },
+    {
+      "name": "TRT Spor Sifresiz Nasil NIR",
+      "url": "https://www.canlitv.vin/blog/trt-spor-sifresiz-nasil-izlenir"
+    },
+    {
+      "name": "FOX 1",
+      "url": "https://www.canlitv.vin/fox-tv-canli-hd-1"
+    },
+    {
+      "name": "N",
+      "url": "https://www.canlitv.vin/ntvcanli-izle"
+    },
+    {
+      "name": "100",
+      "url": "https://www.canlitv.vin/tv100-izle"
+    },
+    {
+      "name": "8",
+      "url": "https://www.canlitv.vin/tv8canli-hd"
+    },
+    {
+      "name": "AZ",
+      "url": "https://www.canlitv.vin/az-tv-canli"
+    },
+    {
+      "name": "Bloomberg HT",
+      "url": "https://www.canlitv.vin/bloomberg-ht-canli-hd"
+    },
+    {
+      "name": "Xezer",
+      "url": "https://www.canlitv.vin/xezer-tv-izle"
+    },
+    {
+      "name": "A",
+      "url": "https://www.canlitv.vin/atvcanli-hdizle"
+    },
+    {
+      "name": "Idman",
+      "url": "https://www.canlitv.vin/idmantv-canli"
+    },
+    {
+      "name": "Ictimai",
+      "url": "https://www.canlitv.vin/ictimai-tv-canli"
+    },
+    {
+      "name": "Sports",
+      "url": "https://www.canlitv.vin/sports-tv-canli"
+    },
+    {
+      "name": "CNN Turk",
+      "url": "https://www.canlitv.vin/cnn-turk-canli-hd"
+    },
+    {
+      "name": "A2 Kesintisiz",
+      "url": "https://www.canlitv.vin/a2-canli-kesintisiz"
     }
   ]
 }
