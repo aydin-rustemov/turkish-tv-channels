@@ -483,21 +483,20 @@ def extract_m3u_url(channel_info):
                     
                     iframe_response = requests.get(full_iframe_src, headers=iframe_headers, timeout=10)
                     if iframe_response.status_code == 200:
-                        iframe_content = iframe_response.text
+                        nested_content = iframe_response.text
                         
-                        # iframe içinde m3u URL'leri ara
-                        m3u_url = find_m3u_in_content(iframe_content)
+                        # Debug için kaydet
+                        nested_debug_file = f"debug_nested_iframe_{full_iframe_src.split('/')[-1].split('?')[0]}.html"
+                        with open(nested_debug_file, 'w', encoding='utf-8') as f:
+                            f.write(nested_content)
+                        
+                        # İçerikten m3u URL'sini ara
+                        m3u_url = find_m3u_in_content(nested_content)
                         if m3u_url:
-                            # URL'yi normalize et
-                            if not m3u_url.startswith('http'):
-                                if m3u_url.startswith('//'):
-                                    m3u_url = 'https:' + m3u_url
-                                else:
-                                    m3u_url = urllib.parse.urljoin(full_iframe_src, m3u_url)
-                            logger.info(f"Normal iframe içinde m3u bulundu: {m3u_url}")
+                            logger.info(f"Nested iframe içinden m3u URL bulundu: {m3u_url}")
                             return m3u_url
-                except Exception as normal_iframe_error:
-                    logger.warning(f"Normal iframe işlenirken hata: {normal_iframe_error}")
+                except Exception as nested_error:
+                    logger.warning(f"Nested iframe hatası: {nested_error}")
         
         # 2. Video player elementlerini bul
         player_selectors = [
@@ -1223,8 +1222,61 @@ def extract_geolive_with_selenium(iframe_url, referer_url):
                             f"https://cdn.yayin.com.tr/tv/{channel_name}/playlist.m3u8",
                             f"https://tv-{channel_name}.live.trt.com.tr/master.m3u8",
                             f"https://stream.canlitv.com/{channel_name}/tracks-v1/index.m3u8",
-                            f"https://canlitv-pull.ercdn.net/{channel_name}/playlist.m3u8"
+                            f"https://canlitv-pull.ercdn.net/{channel_name}/playlist.m3u8",
+                            # Bayrak TV gibi özel kanallar için pattern
+                            f"https://stream.tvcdn.biz/{channel_name}/tracks-v1/index.m3u8",
+                            f"https://live.artidijitalmedya.com/{channel_name}/index.m3u8",
+                            # TRT kanalları için özel patternler
+                            f"https://tv-{channel_name.replace('-canli-yayin', '')}.medya.trt.com.tr/master.m3u8",
+                            # Özel TV kanalları için patternler
+                            f"https://{channel_name.split('-')[0]}.blutv.com/blutv_{channel_name.split('-')[0]}/live.m3u8",
                         ]
+                        
+                        # Eurostar ve diğer tematik kanallar için özel patternler
+                        if "eurostar" in channel_name:
+                            eurostar_patterns = [
+                                "https://stream.eurostar.com.tr/eurostar/smil:eurostar.smil/playlist.m3u8",
+                                "https://mn-nl.mncdn.com/eurostar/eurostar/chunklist.m3u8",
+                                "https://xrklj56s.rocketcdn.com/eurostar.stream_720p/chunklist.m3u8",
+                                "https://streaming.eurostar.com.tr/eurostar/eurostar/playlist.m3u8",
+                                # Bilinen diğer CDN'ler için
+                                "https://cdn-eurostar.yayin.com.tr/eurostar/eurostar/playlist.m3u8",
+                                "https://live.duhnet.tv/S2/HLS_LIVE/eurostar/playlist.m3u8"
+                            ]
+                            known_patterns.extend(eurostar_patterns)
+                            logger.info(f"Eurostar için {len(eurostar_patterns)} özel pattern eklendi")
+                        
+                        # Sinema kanalları için özel patternler
+                        elif "sinema" in channel_name:
+                            sinema_patterns = [
+                                f"https://sinema-{channel_name.split('-')[-1]}.blutv.com/live/playlist.m3u8",
+                                f"https://cdn-sinema.yayin.com.tr/{channel_name}/playlist.m3u8"
+                            ]
+                            known_patterns.extend(sinema_patterns)
+                        
+                        # Spor kanalları için özel patternler
+                        elif "spor" in channel_name or "sport" in channel_name:
+                            sport_patterns = [
+                                f"https://live.sportstv.com.tr/{channel_name}/playlist.m3u8",
+                                f"https://spor.blutv.com/{channel_name}/live.m3u8"
+                            ]
+                            known_patterns.extend(sport_patterns)
+                        
+                        # Belgesel kanalları için özel patternler
+                        elif "belgesel" in channel_name or "discovery" in channel_name or "national" in channel_name:
+                            documentary_patterns = [
+                                f"https://d-{channel_name}.blutv.com/live/playlist.m3u8",
+                                f"https://belgesel.duhnet.tv/{channel_name}/playlist.m3u8"
+                            ]
+                            known_patterns.extend(documentary_patterns)
+                        
+                        # Çocuk kanalları için özel patternler
+                        elif "cocuk" in channel_name or "kids" in channel_name or "cartoon" in channel_name:
+                            kids_patterns = [
+                                f"https://cdn-cocuk.yayin.com.tr/{channel_name}/playlist.m3u8",
+                                f"https://kids.blutv.com/{channel_name}/playlist.m3u8"
+                            ]
+                            known_patterns.extend(kids_patterns)
                         
                         for pattern in known_patterns:
                             try:
@@ -1447,6 +1499,52 @@ def extract_geolive_with_selenium(iframe_url, referer_url):
                     # Özel TV kanalları için patternler
                     f"https://{channel_name.split('-')[0]}.blutv.com/blutv_{channel_name.split('-')[0]}/live.m3u8",
                 ]
+                
+                # Eurostar ve diğer tematik kanallar için özel patternler
+                if "eurostar" in channel_name:
+                    eurostar_patterns = [
+                        "https://stream.eurostar.com.tr/eurostar/smil:eurostar.smil/playlist.m3u8",
+                        "https://mn-nl.mncdn.com/eurostar/eurostar/chunklist.m3u8",
+                        "https://xrklj56s.rocketcdn.com/eurostar.stream_720p/chunklist.m3u8",
+                        "https://streaming.eurostar.com.tr/eurostar/eurostar/playlist.m3u8",
+                        # Bilinen diğer CDN'ler için
+                        "https://cdn-eurostar.yayin.com.tr/eurostar/eurostar/playlist.m3u8",
+                        "https://live.duhnet.tv/S2/HLS_LIVE/eurostar/playlist.m3u8"
+                    ]
+                    known_patterns.extend(eurostar_patterns)
+                    logger.info(f"Eurostar için {len(eurostar_patterns)} özel pattern eklendi")
+                
+                # Sinema kanalları için özel patternler
+                elif "sinema" in channel_name:
+                    sinema_patterns = [
+                        f"https://sinema-{channel_name.split('-')[-1]}.blutv.com/live/playlist.m3u8",
+                        f"https://cdn-sinema.yayin.com.tr/{channel_name}/playlist.m3u8"
+                    ]
+                    known_patterns.extend(sinema_patterns)
+                
+                # Spor kanalları için özel patternler
+                elif "spor" in channel_name or "sport" in channel_name:
+                    sport_patterns = [
+                        f"https://live.sportstv.com.tr/{channel_name}/playlist.m3u8",
+                        f"https://spor.blutv.com/{channel_name}/live.m3u8"
+                    ]
+                    known_patterns.extend(sport_patterns)
+                
+                # Belgesel kanalları için özel patternler
+                elif "belgesel" in channel_name or "discovery" in channel_name or "national" in channel_name:
+                    documentary_patterns = [
+                        f"https://d-{channel_name}.blutv.com/live/playlist.m3u8",
+                        f"https://belgesel.duhnet.tv/{channel_name}/playlist.m3u8"
+                    ]
+                    known_patterns.extend(documentary_patterns)
+                
+                # Çocuk kanalları için özel patternler
+                elif "cocuk" in channel_name or "kids" in channel_name or "cartoon" in channel_name:
+                    kids_patterns = [
+                        f"https://cdn-cocuk.yayin.com.tr/{channel_name}/playlist.m3u8",
+                        f"https://kids.blutv.com/{channel_name}/playlist.m3u8"
+                    ]
+                    known_patterns.extend(kids_patterns)
                 
                 for pattern in known_patterns:
                     try:
