@@ -6,147 +6,265 @@ import json
 import os
 from datetime import datetime
 import time
+import logging
 
-def get_channel_links(base_url):
-    """Ana sayfadan kanal linklerini toplar."""
-    response = requests.get(base_url, headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    })
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    channel_links = []
-    # Kanal linklerini bul - Sitedeki gerçek yapıya göre ayarlanmalı
-    # Örnek: tüm kanal kartları veya kanal linkleri için selector
-    channel_elements = soup.select('.channel-card a, .kanal-kutu a, .tv-channel a')
-    
-    if not channel_elements:
-        # Alternatif selector denemeleri
-        channel_elements = soup.select('a[href*="/izle/"]')
-    
-    for element in channel_elements:
-        href = element.get('href')
-        if href and ('/izle/' in href or '/canli/' in href):
-            # Turkçe ve Azerbaycan kanallarını filtrele (gerekirse)
-            channel_links.append(href)
-    
-    # Hiç link bulunamadıysa, tüm link etiketlerini tara
-    if not channel_links:
-        for a_tag in soup.find_all('a', href=True):
-            href = a_tag['href']
-            if '/izle/' in href or '/canli/' in href:
-                channel_links.append(href)
-    
-    return channel_links
+# Logging ayarları
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def extract_m3u_url(channel_url):
-    """Kanal sayfasından m3u URL'sini çıkarır."""
+# Sabit değerler
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+BASE_URL = "https://www.canlitv.me/hd1"
+OUTPUT_FILE = "kanallar.m3u"
+METADATA_FILE = "metadata.json"
+
+def get_channels():
+    """Ana sayfadan tüm kanal bağlantılarını alır."""
+    headers = {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+    }
+    
     try:
-        response = requests.get(channel_url, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        })
+        response = requests.get(BASE_URL, headers=headers)
+        response.raise_for_status()
         
-        # JavaScript içinde gömülü olan m3u URL'sini bulmak için farklı regex pattern'leri dene
+        soup = BeautifulSoup(response.text, 'html.parser')
+        logger.info(f"HTML içeriği alındı: {len(response.text)} byte")
+        
+        # Tüm kanal linklerini bul
+        all_links = soup.find_all('a', href=True)
+        channel_links = []
+        
+        # Azerbaycan ve Türk kanallarını belirlemek için aranacak kelimeler
+        tr_az_keywords = ['trt', 'a haber', 'atv', 'kanal d', 'show tv', 'star tv', 'fox', 'tv8', 
+                       'ntv', 'cnn türk', 'haberturk', 'kanal 7', 'beyaz tv', 'tv 100',
+                       'azerbaycan', 'azad', 'ictimai', 'idman', 'azərbaycan', 'aztv', 'cbc sport']
+        
+        for link in all_links:
+            href = link.get('href')
+            if not href:
+                continue
+                
+            # Kanal linklerini filtrele
+            if '/izle/' in href or '/canli/' in href:
+                if not href.startswith('http'):
+                    href = f"https://www.canlitv.me{href}" if href.startswith('/') else f"https://www.canlitv.me/{href}"
+                
+                # Kanal ismini al
+                channel_name = href.split('/')[-1].replace('-', ' ').title()
+                
+                # Türk ve Azerbaycan kanallarını filtrele
+                is_tr_az_channel = False
+                for keyword in tr_az_keywords:
+                    if keyword.lower() in channel_name.lower():
+                        is_tr_az_channel = True
+                        break
+                
+                # Doğrudan azeri ve türk kanal linkleri zaten eklenebilir
+                if 'azeri' in href.lower() or 'turk' in href.lower() or is_tr_az_channel:
+                    channel_links.append({'name': channel_name, 'url': href})
+                    logger.info(f"Kanal bulundu: {channel_name} - {href}")
+                    
+        # Hiç kanal bulunamadıysa tüm linkleri kullan
+        if not channel_links:
+            logger.warning("Filtreleme sonrası kanal bulunamadı, tüm kanal linklerini kullanıyoruz.")
+            for link in all_links:
+                href = link.get('href')
+                if href and ('/izle/' in href or '/canli/' in href):
+                    if not href.startswith('http'):
+                        href = f"https://www.canlitv.me{href}" if href.startswith('/') else f"https://www.canlitv.me/{href}"
+                    channel_name = href.split('/')[-1].replace('-', ' ').title()
+                    channel_links.append({'name': channel_name, 'url': href})
+        
+        logger.info(f"Toplam {len(channel_links)} kanal bulundu")
+        return channel_links
+    
+    except Exception as e:
+        logger.error(f"Kanal listesi alınırken hata oluştu: {e}")
+        return []
+
+def extract_m3u_url(channel_info):
+    """Kanal sayfasından m3u URL'sini çıkarır."""
+    headers = {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Referer': BASE_URL,
+    }
+    
+    try:
+        logger.info(f"İşleniyor: {channel_info['name']} - {channel_info['url']}")
+        response = requests.get(channel_info['url'], headers=headers)
+        response.raise_for_status()
+        html_content = response.text
+        
+        # m3u/m3u8 URL'leri için regex pattern'leri
         patterns = [
-            r'source:\s*[\'"]([^\'"]*.m3u[^\'"]*)[\'"]',
-            r'file:\s*[\'"]([^\'"]*.m3u[^\'"]*)[\'"]',
-            r'src=[\'"]([^\'"]*.m3u[^\'"]*)[\'"]',
-            r'(https?://[^\'"\s]+\.m3u[^\'"\s]*)',
-            r'(https?://[^\'"\s]+\.m3u8[^\'"\s]*)'
+            r'source:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'file:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'src=[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
+            r'(https?://[^\'"\s]+\.m3u[8]?[^\'"\s]*)',
+            r'hls:\s*[\'"]([^\'"]*.m3u[8]?[^\'"]*)[\'"]',
         ]
         
+        # Tüm pattern'leri dene
         for pattern in patterns:
-            m3u_matches = re.search(pattern, response.text)
-            if m3u_matches:
-                return m3u_matches.group(1)
+            matches = re.findall(pattern, html_content)
+            if matches:
+                # İlk eşleşmeyi kullan
+                m3u_url = matches[0]
+                logger.info(f"M3U URL bulundu: {m3u_url}")
+                return m3u_url
         
-        # İframe içinde kaynak olabilir
-        iframe_src = None
-        soup = BeautifulSoup(response.text, 'html.parser')
-        iframe = soup.find('iframe')
-        if iframe and iframe.get('src'):
+        # İframe kontrol et
+        soup = BeautifulSoup(html_content, 'html.parser')
+        iframes = soup.find_all('iframe')
+        
+        for iframe in iframes:
             iframe_src = iframe.get('src')
+            if not iframe_src:
+                continue
+                
             if not iframe_src.startswith('http'):
                 iframe_src = f"https:{iframe_src}" if iframe_src.startswith('//') else f"https://{iframe_src}"
             
-            # iframe içeriğini al
             try:
                 iframe_response = requests.get(iframe_src, headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Referer': channel_url
+                    'User-Agent': USER_AGENT,
+                    'Referer': channel_info['url']
                 })
+                iframe_content = iframe_response.text
                 
-                # iframe içinde m3u arama
                 for pattern in patterns:
-                    m3u_matches = re.search(pattern, iframe_response.text)
-                    if m3u_matches:
-                        return m3u_matches.group(1)
-            except Exception as iframe_error:
-                print(f"iframe hatası ({iframe_src}): {iframe_error}")
+                    matches = re.findall(pattern, iframe_content)
+                    if matches:
+                        m3u_url = matches[0]
+                        logger.info(f"İframe içinde M3U URL bulundu: {m3u_url}")
+                        return m3u_url
+            except Exception as e:
+                logger.warning(f"İframe içeriği alınırken hata: {e}")
         
+        # Direkt olarak video kaynaklarını ara
+        video_tags = soup.find_all('video')
+        for video in video_tags:
+            src = video.get('src')
+            if src and ('.m3u' in src or '.m3u8' in src):
+                logger.info(f"Video tag içinde M3U URL bulundu: {src}")
+                return src
+                
+            # Video içindeki source etiketlerini kontrol et
+            sources = video.find_all('source')
+            for source in sources:
+                src = source.get('src')
+                if src and ('.m3u' in src or '.m3u8' in src):
+                    logger.info(f"Video source tag içinde M3U URL bulundu: {src}")
+                    return src
+        
+        logger.warning(f"M3U URL bulunamadı: {channel_info['name']}")
         return None
+        
     except Exception as e:
-        print(f"Hata oluştu (URL: {channel_url}): {e}")
+        logger.error(f"M3U URL çıkarılırken hata oluştu ({channel_info['url']}): {e}")
         return None
 
-def create_m3u_file(channels_data, output_file):
+def create_m3u_file(channels):
     """Toplanan kanal bilgilerinden m3u dosyası oluşturur."""
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("#EXTM3U\n")
+    try:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+            f.write("#EXTM3U\n")
+            
+            for channel in channels:
+                if channel.get('m3u_url'):
+                    f.write(f"#EXTINF:-1,{channel['name']}\n")
+                    f.write(f"{channel['m3u_url']}\n")
+            
+        logger.info(f"M3U dosyası oluşturuldu: {OUTPUT_FILE}")
+        return True
+    except Exception as e:
+        logger.error(f"M3U dosyası oluşturulurken hata: {e}")
+        return False
+
+def create_metadata(channels, valid_count):
+    """Güncel metadata bilgisini JSON dosyasına yazar."""
+    try:
+        metadata = {
+            'last_updated': datetime.now().isoformat(),
+            'channel_count': len(channels),
+            'valid_channels': valid_count,
+            'channels': [{'name': c['name'], 'url': c['url']} for c in channels if c.get('m3u_url')]
+        }
         
-        for channel in channels_data:
-            if channel['m3u_url']:
-                f.write(f"#EXTINF:-1,{channel['name']}\n")
-                f.write(f"{channel['m3u_url']}\n")
+        with open(METADATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+            
+        logger.info(f"Metadata dosyası oluşturuldu: {METADATA_FILE}")
+        return True
+    except Exception as e:
+        logger.error(f"Metadata dosyası oluşturulurken hata: {e}")
+        return False
+
+def save_debug_html():
+    """Hata ayıklama için web sayfasını kaydeder."""
+    try:
+        response = requests.get(BASE_URL, headers={'User-Agent': USER_AGENT})
+        with open('debug_page.html', 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        logger.info("Hata ayıklama için HTML sayfası kaydedildi: debug_page.html")
+    except Exception as e:
+        logger.error(f"HTML sayfası kaydedilirken hata: {e}")
 
 def main():
-    base_url = "https://www.canlitv.me/hd1"
-    output_file = "kanallar.m3u"
+    logger.info("Kanal çekme işlemi başlıyor...")
     
-    print(f"Kanal listesi alınıyor: {base_url}")
-    channel_links = get_channel_links(base_url)
+    # Hata ayıklama için sayfayı kaydet
+    save_debug_html()
     
-    print(f"Toplam {len(channel_links)} kanal linki bulundu.")
+    # Kanalları al
+    channels = get_channels()
     
-    channels_data = []
-    for i, link in enumerate(channel_links):
-        if not link.startswith('http'):
-            link = "https://www.canlitv.me" + link if not link.startswith('/') else "https://www.canlitv.me" + link
+    if not channels:
+        logger.error("Hiç kanal bulunamadı!")
+        return False
+    
+    # Her kanal için m3u URL'sini çıkar
+    for i, channel in enumerate(channels):
+        channel['m3u_url'] = extract_m3u_url(channel)
         
-        channel_name = link.split('/')[-1].replace('-', ' ').title()
-        print(f"[{i+1}/{len(channel_links)}] İşleniyor: {channel_name}")
-        
-        m3u_url = extract_m3u_url(link)
-        channels_data.append({
-            'name': channel_name,
-            'url': link,
-            'm3u_url': m3u_url
-        })
-        
-        # Her 5 kanalda bir 3 saniye bekle (site koruması için)
-        if (i + 1) % 5 == 0:
-            time.sleep(3)
+        # Her 3 kanalda bir 2 saniye bekle (site koruması için)
+        if (i + 1) % 3 == 0:
+            logger.info(f"Rate limiting: 2 saniye bekleniyor...")
+            time.sleep(2)
     
-    print(f"Toplam {len(channels_data)} kanal işlendi.")
-    print(f"M3U URL'si bulunan kanal sayısı: {sum(1 for c in channels_data if c['m3u_url'])}")
+    # Geçerli m3u URL'si olan kanalları say
+    valid_channels = [c for c in channels if c.get('m3u_url')]
+    valid_count = len(valid_channels)
     
-    # Sadece m3u_url'si olan kanalları kaydet
-    valid_channels = [c for c in channels_data if c['m3u_url']]
+    logger.info(f"Toplam {len(channels)} kanal işlendi")
+    logger.info(f"M3U URL'si bulunan kanal sayısı: {valid_count}")
     
-    create_m3u_file(valid_channels, output_file)
-    print(f"M3U dosyası oluşturuldu: {output_file}")
+    if valid_count == 0:
+        logger.error("Hiç geçerli M3U URL'si bulunamadı!")
+        # Debugging için tüm kanalları listele
+        for channel in channels:
+            logger.info(f"Kanal: {channel['name']} - {channel['url']}")
+        return False
     
-    # Güncellenme bilgisi için JSON dosyası
-    metadata = {
-        'last_updated': datetime.now().isoformat(),
-        'channel_count': len(channels_data),
-        'valid_channels': len(valid_channels),
-        'channels': [{'name': c['name'], 'url': c['url']} for c in valid_channels]
-    }
+    # M3U dosyasını oluştur
+    create_m3u_file(valid_channels)
     
-    with open('metadata.json', 'w', encoding='utf-8') as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    # Metadata dosyasını oluştur
+    create_metadata(channels, valid_count)
     
-    print("metadata.json dosyası oluşturuldu.")
+    logger.info("İşlem tamamlandı!")
+    return True
 
 if __name__ == "__main__":
     main() 

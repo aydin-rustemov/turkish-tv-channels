@@ -8,6 +8,8 @@ on:
 jobs:
   update-channels:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -26,9 +28,15 @@ jobs:
     - name: Run channel scraper
       run: python channel_scraper.py
       
-    - name: Commit and push if changed
+    - name: Save debug HTML if exists
       run: |
-        git config --global user.name 'GitHub Actions'
-        git config --global user.email 'actions@github.com'
-        git add kanallar.m3u metadata.json
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Otomatik kanal listesi güncellemesi: $(date +'%Y-%m-%d')" && git push)
+        if [ -f debug_page.html ]; then
+          cat debug_page.html > debug_output.txt
+          echo "Debug HTML sayfası oluşturuldu"
+        fi
+      
+    - name: Commit and push changes
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Otomatik kanal listesi güncellemesi: $(date +'%Y-%m-%d')"
+        file_pattern: "kanallar.m3u metadata.json debug_page.html"
