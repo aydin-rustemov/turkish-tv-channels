@@ -670,18 +670,50 @@ def process_geolive_iframe(iframe_url, referer_url):
             else:
                 iframe_url = urllib.parse.urljoin(BASE_URL, iframe_url)
         
+        # YENİ: Rekaptcha algılama ve atlatma
+        logger.info("Anti-bot korumalarını atlatma denemesi yapılıyor...")
+        
+        # Geolive sayfasını önce Selenium ile deneyelim
+        m3u_url = extract_geolive_with_selenium(iframe_url, referer_url)
+        if m3u_url:
+            logger.info(f"Selenium ile GeoLive'dan m3u URL başarıyla çıkarıldı: {m3u_url}")
+            return m3u_url
+        
         # Geolive sayfasını getir
         headers = {
             'User-Agent': USER_AGENT,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Referer': referer_url,
             'Origin': BASE_URL,
+            'Cookie': 'geolivevisit=1; watched=true; tvpage=active',  # CAPTCHA bypass için cookie eklendi
         }
         
-        response = requests.get(iframe_url, headers=headers, timeout=15)
+        # Farklı User-Agent'lar ile dene
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0'
+        ]
         
-        if response.status_code != 200:
-            logger.warning(f"GeoLive iframe alınamadı: HTTP {response.status_code}")
+        response = None
+        for ua in user_agents:
+            try:
+                headers['User-Agent'] = ua
+                response = requests.get(iframe_url, headers=headers, timeout=15)
+                
+                if response.status_code == 200 and not ('captcha' in response.text.lower() or 'g-recaptcha' in response.text.lower()):
+                    logger.info(f"Başarılı GeoLive erişimi (User-Agent: {ua[:20]}...)")
+                    break
+                else:
+                    logger.warning(f"Bu User-Agent ile erişim başarısız: {ua[:20]}...")
+                    time.sleep(1)
+            except Exception as e:
+                logger.warning(f"HTTP isteği hatası: {str(e)}")
+        
+        if not response or response.status_code != 200:
+            logger.warning(f"GeoLive iframe alınamadı: HTTP {response.status_code if response else 'None'}")
             return None
         
         # Debug için sayfayı kaydet
@@ -692,6 +724,38 @@ def process_geolive_iframe(iframe_url, referer_url):
         
         # İçerikten m3u bağlantısını ara
         iframe_content = response.text
+        
+        # Captcha kontrolü
+        if 'captcha' in iframe_content.lower() or 'g-recaptcha' in iframe_content.lower():
+            logger.warning("CAPTCHA algılandı. Selenium ile otomatik bypass denemesi yapılacak...")
+            m3u_url = extract_geolive_with_selenium(iframe_url, referer_url)
+            if m3u_url:
+                return m3u_url
+            
+            # Kanal adını al
+            channel_name = iframe_url.split('kanal=')[1].split('&')[0] if 'kanal=' in iframe_url else 'unknown'
+            
+            # Direk bilinen URL'leri dene
+            logger.info(f"Bilinen M3U patternleri deneniyor: {channel_name}")
+            known_patterns = [
+                f"https://canlitv.center/stream/{channel_name}.m3u8",
+                f"https://cdn.yayin.com.tr/tv/{channel_name}/playlist.m3u8",
+                f"https://tv-{channel_name}.live.trt.com.tr/master.m3u8",
+                f"https://stream.canlitv.com/{channel_name}/tracks-v1/index.m3u8",
+                f"https://canlitv-pull.ercdn.net/{channel_name}/playlist.m3u8"
+            ]
+            
+            for pattern in known_patterns:
+                try:
+                    head_response = requests.head(pattern, timeout=5)
+                    if head_response.status_code < 400:
+                        logger.info(f"Bilinen pattern çalışıyor: {pattern}")
+                        return pattern
+                except:
+                    continue
+            
+            logger.warning(f"CAPTCHA nedeniyle işlem başarısız: {iframe_url}")
+            return None
         
         # YENİ: JavaScript değişken tanımlarını analiz et
         # Genellikle gizlenmiş videoları ayıklamak için
@@ -1014,6 +1078,269 @@ def process_geolive_iframe(iframe_url, referer_url):
         
     except Exception as e:
         logger.error(f"GeoLive iframe işleme hatası: {str(e)}")
+        return None
+
+def extract_geolive_with_selenium(iframe_url, referer_url):
+    """Selenium ve Chrome Stealth ile GeoLive iframe'den m3u URL çıkarma"""
+    try:
+        logger.info(f"Selenium ile GeoLive iframe işleniyor: {iframe_url}")
+        
+        # Selenium'un kurulu olup olmadığını kontrol et
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+        except ImportError:
+            logger.warning("Selenium paketleri bulunamadı, otomatik kurmayı deniyorum...")
+            import subprocess
+            import sys
+            
+            # Pip ile gerekli paketleri yükle
+            packages = ["selenium", "webdriver-manager", "selenium-stealth"]
+            for package in packages:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package], 
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            logger.info("Selenium paketleri başarıyla kuruldu")
+            
+            try:
+                import selenium_stealth
+            except ImportError:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "selenium-stealth"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                import selenium_stealth
+                logger.info("Selenium Stealth başarıyla kuruldu")
+        
+        # WebDriver Manager ile Chrome Driver'ı otomatik kur
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            chromedriver_path = ChromeDriverManager().install()
+        except Exception as e:
+            logger.warning(f"Chrome Driver otomatik kurulumu hatası: {e}")
+            # Sistem PATH'inde ChromeDriver'ı aramaya çalış
+            chromedriver_path = "chromedriver"
+        
+        # Chrome Options ayarlamaları - Stealth mode için özel ayarlar
+        chrome_options = Options()
+        
+        # Stealth mode tespiti zorlaştıracak ayarlar
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        # İstersen headless modda çalıştır, ancak site bunu tespit edebilir
+        #chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--disable-site-isolation-trials")
+        chrome_options.add_argument(f"--user-agent={USER_AGENT}")
+        
+        # Referrer ve cookie ekleme
+        chrome_options.add_argument(f"--referer={referer_url}")
+        
+        # WebDriver'ı başlat
+        try:
+            service = Service(chromedriver_path)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            # Selenium Stealth uygulaması - otomatik tarayıcı tespitini zorlaştırır
+            try:
+                import selenium_stealth
+                selenium_stealth.stealth(driver,
+                    languages=["tr-TR", "tr", "en-US", "en"],
+                    vendor="Google Inc.",
+                    platform="Win32",
+                    webgl_vendor="Intel Inc.",
+                    renderer="Intel Iris OpenGL Engine",
+                    fix_hairline=True,
+                )
+                logger.info("Selenium Stealth modu aktif edildi")
+            except Exception as e:
+                logger.warning(f"Selenium Stealth uygulanamadı: {e}")
+                
+        except Exception as e:
+            logger.error(f"Chrome Driver başlatma hatası: {e}")
+            return None
+        
+        try:
+            # Zaman aşımı ayarları
+            driver.set_page_load_timeout(45)
+            
+            # Önce cookieleri ayarla
+            driver.get(BASE_URL)
+            driver.add_cookie({"name": "geolivevisit", "value": "1"})
+            driver.add_cookie({"name": "watched", "value": "true"})
+            driver.add_cookie({"name": "tvpage", "value": "active"})
+            
+            # Sayfayı yükle
+            logger.info(f"GeoLive iframe yükleniyor: {iframe_url}")
+            driver.get(iframe_url)
+            
+            # Sayfanın yüklenmesini bekle ve ekran görüntüsü al
+            time.sleep(10)  # Sayfanın tamamen yüklenmesi için biraz bekle
+            
+            # Debug için ekran görüntüsü al
+            try:
+                driver.save_screenshot(f"debug_geolive_screenshot_{iframe_url.split('kanal=')[1].split('&')[0]}.png")
+                logger.info("Ekran görüntüsü alındı")
+            except:
+                pass
+            
+            # CAPTCHA kontrolü
+            if "captcha" in driver.page_source.lower() or "g-recaptcha" in driver.page_source.lower():
+                logger.warning("Selenium'da CAPTCHA algılandı")
+                # CAPTCHA'yı bekle ve çözülmesini talep et
+                try:
+                    # Başlık ekleme
+                    driver.execute_script("""
+                    var captchaDiv = document.createElement('div');
+                    captchaDiv.innerHTML = '<h1 style="color:red; text-align:center;">CAPTCHA ÇÖZÜMÜ BEKLENİYOR</h1><p style="text-align:center;">60 saniye içinde CAPTCHA çözümünüzü tamamlayın.</p>';
+                    document.body.insertBefore(captchaDiv, document.body.firstChild);
+                    """)
+                    
+                    # 60 saniye CAPTCHA çözümü için bekle
+                    logger.info("Kullanıcının CAPTCHA çözümü için 60 saniye bekleniyor...")
+                    time.sleep(60)
+                    
+                    # CAPTCHA çözüldükten sonra sayfanın yeniden yüklenmesini bekle
+                    logger.info("CAPTCHA çözümü sonrası sayfa analiz ediliyor...")
+                    time.sleep(5)
+                except Exception as captcha_error:
+                    logger.error(f"CAPTCHA işleme hatası: {captcha_error}")
+            
+            # Sayfa kaynak kodunu al ve m3u URL'lerini bul
+            page_source = driver.page_source
+            
+            # Debug amaçlı kaydet
+            with open(f"selenium_geolive_{iframe_url.split('kanal=')[1].split('&')[0]}.html", 'w', encoding='utf-8') as f:
+                f.write(page_source)
+            
+            # İçerikteki m3u URL'lerini bul
+            m3u_url = find_m3u_in_content(page_source)
+            if m3u_url:
+                logger.info(f"Selenium ile GeoLive sayfasında m3u URL bulundu: {m3u_url}")
+                driver.quit()
+                return m3u_url
+            
+            # JavaScript ile veri topla
+            try:
+                # JavaScript çalıştırarak daha derin analiz yap
+                js_result = driver.execute_script("""
+                function extractM3uUrls() {
+                    var results = [];
+                    
+                    // 1. Video elementlerini kontrol et
+                    var videos = document.querySelectorAll('video');
+                    for (var i = 0; i < videos.length; i++) {
+                        if (videos[i].src && videos[i].src.includes('.m3u')) {
+                            results.push({type: 'video.src', url: videos[i].src});
+                        }
+                        
+                        var sources = videos[i].querySelectorAll('source');
+                        for (var j = 0; j < sources.length; j++) {
+                            if (sources[j].src && sources[j].src.includes('.m3u')) {
+                                results.push({type: 'source.src', url: sources[j].src});
+                            }
+                        }
+                    }
+                    
+                    // 2. JavaScript değişkenleri ara
+                    var pageSource = document.documentElement.outerHTML;
+                    
+                    // Common patterns
+                    var patterns = [
+                        /var\\s+([a-zA-Z0-9_$]+)\\s*=\\s*['"]([^'"]*\\.m3u[^'"]*)['"]/g,
+                        /source\\s*:\\s*['"]([^'"]*\\.m3u[^'"]*)['"]/g,
+                        /file\\s*:\\s*['"]([^'"]*\\.m3u[^'"]*)['"]/g,
+                        /url\\s*:\\s*['"]([^'"]*\\.m3u[^'"]*)['"]/g,
+                        /src\\s*=\\s*['"]([^'"]*\\.m3u[^'"]*)['"]/g,
+                        /(https?:\\/\\/[^'"\s]+\\.m3u[8]?[^'"\s]*)/g
+                    ];
+                    
+                    for (var i = 0; i < patterns.length; i++) {
+                        var regex = patterns[i];
+                        var match;
+                        
+                        while ((match = regex.exec(pageSource)) !== null) {
+                            var url = match[1].includes('http') ? match[1] : match[2];
+                            if (url && url.includes('.m3u')) {
+                                results.push({type: 'regex', url: url});
+                            }
+                        }
+                    }
+                    
+                    // 3. Network kayıtlarındaki m3u isteklerini kontrol et
+                    if (window.performance && window.performance.getEntries) {
+                        var entries = window.performance.getEntries();
+                        for (var i = 0; i < entries.length; i++) {
+                            if (entries[i].name && entries[i].name.includes('.m3u')) {
+                                results.push({type: 'network', url: entries[i].name});
+                            }
+                        }
+                    }
+                    
+                    return results;
+                }
+                
+                return extractM3uUrls();
+                """)
+                
+                logger.info(f"JavaScript sonucu: {js_result}")
+                
+                if js_result and len(js_result) > 0:
+                    for result in js_result:
+                        if result.get('url') and '.m3u' in result.get('url'):
+                            logger.info(f"JavaScript analizi ile m3u URL bulundu: {result.get('url')}")
+                            driver.quit()
+                            return result.get('url')
+                
+            except Exception as js_error:
+                logger.warning(f"JavaScript analizi hatası: {js_error}")
+            
+            # HAR dosyası oluştur ve içinden m3u8 URL'leri ara
+            try:
+                # Performance loglarını al
+                logs = driver.execute_script("""
+                    var performance = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance || {};
+                    var network = performance.getEntries() || [];
+                    return network;
+                """)
+                
+                # Network trafiğinde m3u8 URL'lerini ara
+                if logs:
+                    for entry in logs:
+                        name = entry.get('name', '')
+                        if name and ('.m3u8' in name or '.m3u' in name):
+                            logger.info(f"Performance loglarından m3u bulundu: {name}")
+                            driver.quit()
+                            return name
+            except Exception as perf_error:
+                logger.warning(f"Performance logları alınırken hata: {perf_error}")
+            
+            # Hiçbir şey bulunamadı
+            logger.warning(f"Selenium ile GeoLive iframe içinde m3u URL bulunamadı")
+            driver.quit()
+            return None
+            
+        except Exception as browse_error:
+            logger.error(f"GeoLive sayfası Selenium ile erişim hatası: {browse_error}")
+            try:
+                driver.quit()
+            except:
+                pass
+            return None
+            
+    except Exception as e:
+        logger.error(f"Selenium ile GeoLive iframe işleme hatası: {str(e)}")
         return None
 
 def extract_with_ytdlp(url):
