@@ -693,6 +693,147 @@ def process_geolive_iframe(iframe_url, referer_url):
         # İçerikten m3u bağlantısını ara
         iframe_content = response.text
         
+        # YENİ: JavaScript değişken tanımlarını analiz et
+        # Genellikle gizlenmiş videoları ayıklamak için
+        var_declarations = re.findall(r'var\s+([a-zA-Z0-9_$]+)\s*=\s*[\'"](.*?)[\'"];', iframe_content)
+        var_dict = {k: v for k, v in var_declarations}
+        
+        # Değişkenleri birleştiren ifadeleri bul
+        combined_vars = re.findall(r'([a-zA-Z0-9_$]+\s*\+\s*[a-zA-Z0-9_$]+(?:\s*\+\s*[a-zA-Z0-9_$]+)*)', iframe_content)
+        
+        # Değişken birleştirmeleri deneyip m3u ara
+        for combined in combined_vars:
+            try:
+                parts = re.split(r'\s*\+\s*', combined)
+                combined_value = ""
+                for part in parts:
+                    if part in var_dict:
+                        combined_value += var_dict[part]
+                
+                if '.m3u' in combined_value:
+                    logger.info(f"Değişken birleştirme ile m3u URL bulundu: {combined_value}")
+                    return combined_value
+            except Exception as var_error:
+                logger.warning(f"Değişken birleştirme analiz hatası: {var_error}")
+        
+        # YENİ: kaynak etiketi içindeki gizli içerikleri analiz et
+        source_with_vars = re.findall(r'source\s*:\s*([a-zA-Z0-9_$]+\s*\+\s*[a-zA-Z0-9_$]+(?:\s*\+\s*[a-zA-Z0-9_$]+)*)', iframe_content)
+        for source_expr in source_with_vars:
+            try:
+                parts = re.split(r'\s*\+\s*', source_expr)
+                combined_value = ""
+                for part in parts:
+                    part = part.strip()
+                    if part in var_dict:
+                        combined_value += var_dict[part]
+                    elif part.startswith('"') or part.startswith("'"):
+                        # Stringse tırnak işaretlerini kaldır
+                        combined_value += part.strip('"\'')
+                
+                if '.m3u' in combined_value:
+                    logger.info(f"Source değişken birleştirme ile m3u URL bulundu: {combined_value}")
+                    return combined_value
+            except Exception as source_error:
+                logger.warning(f"Source değişken birleştirme analiz hatası: {source_error}")
+        
+        # YENİ: Obfuscated stringleri analiz et - HLS.js ve benzeri kütüphanelerde
+        hls_patterns = [
+            r'([a-zA-Z0-9_$]+)\.src\s*=\s*\{[^}]*?\bsrc\s*:\s*([a-zA-Z0-9_$]+\s*\+\s*[a-zA-Z0-9_$]+(?:\s*\+\s*[a-zA-Z0-9_$]+)*)',
+            r'(?:Hls|hls)\.loadSource\(([a-zA-Z0-9_$]+\s*\+\s*[a-zA-Z0-9_$]+(?:\s*\+\s*[a-zA-Z0-9_$]+)*)\)',
+            r'videojs\([^)]+\)\.src\(\{\s*src\s*:\s*([a-zA-Z0-9_$]+\s*\+\s*[a-zA-Z0-9_$]+(?:\s*\+\s*[a-zA-Z0-9_$]+)*)',
+        ]
+        
+        for pattern in hls_patterns:
+            matches = re.findall(pattern, iframe_content)
+            for match in matches:
+                try:
+                    expr = match
+                    if isinstance(match, tuple):
+                        expr = match[1] if len(match) > 1 else match[0]
+                        
+                    parts = re.split(r'\s*\+\s*', expr)
+                    combined_value = ""
+                    for part in parts:
+                        part = part.strip()
+                        if part in var_dict:
+                            combined_value += var_dict[part]
+                        elif part.startswith('"') or part.startswith("'"):
+                            combined_value += part.strip('"\'')
+                    
+                    if '.m3u' in combined_value:
+                        logger.info(f"HLS pattern ile m3u URL bulundu: {combined_value}")
+                        return combined_value
+                except Exception as hls_error:
+                    logger.warning(f"HLS pattern analiz hatası: {hls_error}")
+        
+        # YENİ: Özel canlitv.vin desen analizi
+        m3u8_regex_pattern = r'function\s+getURL\(\)\s*{[^}]*\breturn\s+[\'"]([^\'"]*)[\'"]\s*\+\s*[\'"]([^\'"]*)[\'"]\s*;?\s*}'
+        m3u8_matches = re.findall(m3u8_regex_pattern, iframe_content)
+        if m3u8_matches:
+            try:
+                parts = m3u8_matches[0]
+                if len(parts) >= 2:
+                    combined_url = parts[0] + parts[1]
+                    if '.m3u' in combined_url:
+                        logger.info(f"getURL fonksiyonundan m3u URL bulundu: {combined_url}")
+                        return combined_url
+            except Exception as url_func_error:
+                logger.warning(f"getURL fonksiyonu analiz hatası: {url_func_error}")
+        
+        # YENİ: JavaScript fonksiyonlarını bul
+        js_functions = {}
+        function_pattern = r'function\s+([a-zA-Z0-9_$]+)\s*\([^)]*\)\s*{([^}]*)}'
+        func_matches = re.findall(function_pattern, iframe_content)
+        
+        for func_name, func_body in func_matches:
+            js_functions[func_name] = func_body
+            
+            # Eğer fonksiyonda return ve m3u ifadesi varsa analiz et
+            if 'return' in func_body and ('.m3u' in func_body or '.m3u8' in func_body):
+                # Basit return ifadelerini bul
+                return_pattern = r'return\s+[\'"]([^\'"]*\.m3u[^\'"]*)[\'"]'
+                return_matches = re.findall(return_pattern, func_body)
+                
+                if return_matches:
+                    logger.info(f"JavaScript fonksiyonundan m3u URL bulundu: {return_matches[0]}")
+                    return return_matches[0]
+                
+                # String birleştirme return'leri
+                return_concat_pattern = r'return\s+[\'"]([^\'"]*)[\'"](?:\s*\+\s*[\'"]([^\'"]*)[\'"])+\s*;'
+                return_concat_matches = re.findall(return_concat_pattern, func_body)
+                
+                if return_concat_matches:
+                    concat_strings = re.findall(r'[\'"]([^\'"]*)[\'"]', func_body[func_body.find('return'):])
+                    combined = ''.join(concat_strings)
+                    
+                    if '.m3u' in combined:
+                        logger.info(f"JavaScript fonksiyonu string birleştirmesiyle m3u URL bulundu: {combined}")
+                        return combined
+        
+        # YENİ: JSON yapılandırma objelerini ara
+        json_pattern = r'(?:var|const|let)\s+([a-zA-Z0-9_$]+)\s*=\s*({[^;]*?(?:src|source|file|url)\s*:\s*[\'"][^\'";]*?\.m3u[^\'"]*[\'"][^;]*})'
+        json_matches = re.findall(json_pattern, iframe_content)
+        
+        for var_name, json_str in json_matches:
+            try:
+                # {} içindeki içeriği tam bir JSON'a çevir
+                cleaned_json = '{' + re.sub(r'([{,])\s*([a-zA-Z0-9_$]+)\s*:', r'\1"\2":', json_str.strip('{} ')) + '}'
+                
+                # Tırnak işaretlerini normalleştir
+                cleaned_json = re.sub(r':\s*\'([^\']*?)\'', r':"\1"', cleaned_json)
+                
+                # Temiz bir JSON mu kontrol et
+                if cleaned_json.count('{') == cleaned_json.count('}'):
+                    # m3u URL'sini bul
+                    url_pattern = r'["\'](https?://[^"\']*\.m3u[8]?[^"\']*)["\']'
+                    url_match = re.search(url_pattern, cleaned_json)
+                    
+                    if url_match:
+                        logger.info(f"JSON yapılandırmasından m3u URL bulundu: {url_match.group(1)}")
+                        return url_match.group(1)
+            except Exception as json_error:
+                logger.warning(f"JSON analiz hatası: {json_error}")
+        
         # 1. Doğrudan embedDecode fonksiyonunu ara
         embed_decode_pattern = r'embedDecode\("([^"]+)"\)'
         embed_matches = re.findall(embed_decode_pattern, iframe_content)
@@ -836,6 +977,37 @@ def process_geolive_iframe(iframe_url, referer_url):
         if m3u_url:
             logger.info(f"Genel içerik taramasından m3u URL bulundu: {m3u_url}")
             return m3u_url
+        
+        # 9. YENİ: URL parçalarını birleştirerek arama
+        url_part_pattern = r'/([^/]*\.m3u[^/\'"]*)'
+        url_parts = re.findall(url_part_pattern, iframe_content)
+        
+        if url_parts:
+            for part in url_parts:
+                # Olası sunucu domainlerini kontrol et
+                possible_domains = [
+                    'https://cdn.canlitv.vin',
+                    'https://stream.canlitv.vin',
+                    'https://live.canlitv.vin',
+                    'https://player.canlitv.vin',
+                    'https://tv.canlitv.vin',
+                    'https://media.canlitv.vin',
+                    'https://cdn.canlitv.com',
+                    'https://stream.canlitv.com'
+                ]
+                
+                for domain in possible_domains:
+                    potential_url = f"{domain}/{part}"
+                    logger.info(f"Parçalardan oluşturulan potansiyel m3u URL: {potential_url}")
+                    
+                    # Bu URL'yi kontrol et (başlık kontrolü yeterli)
+                    try:
+                        head_response = requests.head(potential_url, timeout=5)
+                        if head_response.status_code < 400:
+                            logger.info(f"Geçerli parçalanmış m3u URL bulundu: {potential_url}")
+                            return potential_url
+                    except:
+                        continue
         
         logger.warning(f"GeoLive iframe'inde m3u URL bulunamadı")
         return None
