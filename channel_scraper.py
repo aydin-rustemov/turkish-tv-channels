@@ -22,7 +22,7 @@ METADATA_FILE = "metadata.json"
 def get_all_channel_urls():
     """Pagination ile tüm sayfaları gezerek tüm kanal URL'lerini toplar."""
     all_channel_urls = []
-    max_pages = 50  # Pagination için maksimum sayfa sayısını daha da artırıyoruz
+    max_pages = 50  # Pagination için maksimum sayfa sayısını artırıyoruz
     
     headers = {
         'User-Agent': USER_AGENT,
@@ -31,170 +31,112 @@ def get_all_channel_urls():
     }
     
     try:
-        # Türk ve Azerbaycan kanallarını almak için URL'ler
+        # Direk sayfa URL formatları - ?sayfa=N formatını kullan
+        direct_page_urls = []
+        # Ana sayfa
+        direct_page_urls.append(BASE_URL)
+        # Sayfa numaralı URL'ler
+        for page_num in range(2, 10):  # 10 sayfaya kadar kontrol et
+            direct_page_urls.append(f"{BASE_URL}?sayfa={page_num}")
+        
+        # Kategori URL'leri
         category_urls = [
-            BASE_URL,  # Ana sayfa (karışık kanallar)
-            BASE_URL + "kategori/ulusal/",  # Ulusal kanallar
-            BASE_URL + "kategori/haber/",   # Haber kanalları
-            BASE_URL + "kategori/spor/",    # Spor kanalları
-            BASE_URL + "kategori/muzik/",   # Müzik kanalları
-            BASE_URL + "kategori/cocuk/",   # Çocuk kanalları
-            BASE_URL + "kategori/belgesel/", # Belgesel kanalları
-            BASE_URL + "kategori/azerbaycan/", # Azerbaycan kanalları
-            BASE_URL + "kategori/dini/",    # Dini kanalları
-            BASE_URL + "kategori/yerel/",    # Yerel kanallar
-            BASE_URL + "kategori/sinema/",   # Sinema kanalları
-            BASE_URL + "kategori/belgesel/", # Belgesel kanalları (tekrar kontrol için)
-            BASE_URL + "kategori/eglence/", # Eğlence kanalları
-            BASE_URL + "kategori/yasam/",   # Yaşam kanalları
-            BASE_URL + "kategori/muzik-kanallari/" # Alternatif müzik kanalları URL'si
+            BASE_URL + "kanallar/ulusal",
+            BASE_URL + "kanallar/haber",
+            BASE_URL + "kanallar/spor",
+            BASE_URL + "kanallar/muzik",
+            BASE_URL + "kanallar/cocuk",
+            BASE_URL + "kanallar/dini",
+            BASE_URL + "kanallar/belgesel",
+            BASE_URL + "kanallar/yerel",
+            BASE_URL + "kanallar/yabanci",
+            BASE_URL + "kanallar/azerbaycan",
+            BASE_URL + "kanallar/kktc",
+            BASE_URL + "kanallar/diğer-eglence",
+            BASE_URL + "kanallar/avrupa",
+            BASE_URL + "kanallar/almanya",
+            # Eski formatı da koru
+            BASE_URL + "kategori/ulusal/",
+            BASE_URL + "kategori/haber/",
+            BASE_URL + "kategori/spor/",
+            BASE_URL + "kategori/muzik/",
+            BASE_URL + "kategori/cocuk/",
+            BASE_URL + "kategori/dini/",
+            BASE_URL + "kategori/belgesel/",
+            BASE_URL + "kategori/yerel/",
+            BASE_URL + "kategori/yabanci/",
+            BASE_URL + "kategori/azerbaycan/",
+            BASE_URL + "kategori/diğer-eglence/",
         ]
         
-        logger.info(f"Toplam {len(category_urls)} kategori işlenecek")
+        # Tüm URL'ler - önce direk sayfaları işle
+        all_urls = direct_page_urls + category_urls
+        logger.info(f"Toplam {len(all_urls)} URL işlenecek")
         
-        # Tüm kategorileri işle
-        for category_url in category_urls:
-            logger.info(f"Kategori işleniyor: {category_url}")
-            page = 1
-            has_more_pages = True
-            category_channel_count = 0
+        # Tüm sayfa URL'lerini işle
+        for page_url in all_urls:
+            logger.info(f"URL işleniyor: {page_url}")
             
-            while has_more_pages and page <= max_pages:
-                page_url = f"{category_url}page/{page}/" if page > 1 else category_url
-                logger.info(f"Sayfa işleniyor: {page_url}")
+            try:
+                response = requests.get(page_url, headers=headers, timeout=15)
                 
-                try:
-                    response = requests.get(page_url, headers=headers, timeout=10)
-                    
-                    # 404 sayfası ile karşılaşırsak, daha fazla sayfa yoktur
-                    if response.status_code == 404:
-                        logger.info(f"Sayfa bulunamadı, son sayfa: {page-1}")
-                        has_more_pages = False
-                        break
-                    
-                    response.raise_for_status()
-                    html_content = response.text
-                    
-                    # Debug: HTML içeriğinde pagination var mı kontrol et
-                    pagination_exists = False
-                    if 'pagination' in html_content or 'page-numbers' in html_content:
-                        pagination_exists = True
-                        logger.info(f"Pagination bulundu: {pagination_exists}")
-                    
-                    soup = BeautifulSoup(html_content, 'html.parser')
-                    
-                    # Kanal bağlantılarını bul - farklı selector'ları dene
-                    channel_links = []
-                    selectors = [
-                        '.channels a', '.channel-box a', '.kanal-kutu a', 
-                        'a[href*="/izle/"]', 'a[href*="/canli-"]',
-                        '.tv-channels a', '.channel-container a',
-                        '.kanal-box a', '.kanal-box > a',
-                        '.kanal-listesi a', '.channel-list a',
-                        'div[class*="channel"] a', 'div[class*="kanal"] a'
-                    ]
-                    
-                    for selector in selectors:
-                        links = soup.select(selector)
-                        if links:
-                            channel_links.extend(links)
-                            logger.info(f"Selector '{selector}' ile {len(links)} kanal bağlantısı bulundu")
-                    
-                    # Hiç bağlantı bulunamadıysa, tüm linkleri kontrol et
-                    if not channel_links:
-                        logger.info("Standart selector'lar başarısız, tüm linkleri tarıyoruz")
-                        all_links = soup.find_all('a', href=True)
-                        for link in all_links:
-                            href = link.get('href', '')
-                            if '/izle/' in href or '/canli-' in href:
-                                channel_links.append(link)
-                        
-                        if channel_links:
-                            logger.info(f"Genel tarama ile {len(channel_links)} kanal bağlantısı bulundu")
-                    
-                    # Bulunan bağlantıları işle
-                    found_urls = 0
-                    for link in channel_links:
+                # 404 sayfası ile karşılaşırsak, bu URL'yi atla
+                if response.status_code == 404:
+                    logger.info(f"Sayfa bulunamadı: {page_url}")
+                    continue
+                
+                response.raise_for_status()
+                html_content = response.text
+                
+                # Sayfadaki tüm kanal kartlarını bul
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Kanal kartlarını içeren div'leri bul
+                channel_cards = []
+                
+                # Tüm kanal bağlantılarını bul - Kanal kartyaları için
+                channel_card_selectors = [
+                    '.kanal-listesi a', '.tv-channels a', '.channels a',
+                    'div.kanal-kutu a', '.channel-container a', 'div.channel-box a',
+                    '.channel-list a', 'div[class*="kanal"] a', 'div[class*="channel"] a',
+                    '.thumbnail a', 'a.more-link', '.card a', '.tv-card a',
+                    '.item a', 'div.item a', '.list-item a'
+                ]
+                
+                for selector in channel_card_selectors:
+                    card_links = soup.select(selector)
+                    if card_links:
+                        logger.info(f"'{selector}' ile {len(card_links)} kanal kartı bulundu.")
+                        channel_cards.extend(card_links)
+                
+                # Her kanal kartındaki bağlantıları işle
+                for card in channel_cards:
+                    href = card.get('href')
+                    if href and ('/izle/' in href or '/canli-' in href):
+                        if not href.startswith('http'):
+                            href = urllib.parse.urljoin(BASE_URL, href)
+                        all_channel_urls.append(href)
+                        logger.info(f"Kanal URL'si eklendi: {href}")
+                
+                # Kanal kartları bulunamadıysa, tüm bağlantıları kontrol et
+                if not channel_cards:
+                    logger.info(f"Kanal kartları bulunamadı, tüm linkleri tarıyoruz: {page_url}")
+                    all_links = soup.find_all('a', href=True)
+                    for link in all_links:
                         href = link.get('href')
                         if href and ('/izle/' in href or '/canli-' in href):
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(BASE_URL, href)
                             all_channel_urls.append(href)
-                            found_urls += 1
-                    
-                    category_channel_count += found_urls
-                    logger.info(f"Sayfada {found_urls} kanal URL'si bulundu")
-                    
-                    # Sonraki sayfa kontrolü - genişletilmiş kontrol
-                    next_page = None
-                    next_selectors = [
-                        '.pagination a.next', 'a.next-page', 'a[rel="next"]',
-                        '.pagination-next', '.pagination li:last-child a',
-                        'a:contains("Sonraki")', 'a:contains("İleri")',
-                        '.next.page-numbers', '.page-numbers.next',
-                        'li.next a', 'a.nextpostslink',
-                        '.pagination > a:last-child'
-                    ]
-                    
-                    # İlk önce doğrudan sonraki sayfa bağlantısını bulmaya çalış
-                    for selector in next_selectors:
-                        next_candidates = soup.select(selector)
-                        if next_candidates:
-                            next_page = next_candidates[0]
-                            logger.info(f"Sonraki sayfa selector '{selector}' ile bulundu")
-                            break
-                    
-                    if not next_page:
-                        # Alternatif 1: sayfa numarasını arayarak bul
-                        page_nums = soup.select('.pagination a, .page-numbers')
-                        current_page_found = False
-                        next_page_exists = False
-                        
-                        for p in page_nums:
-                            try:
-                                if p.get_text().strip() == str(page):
-                                    current_page_found = True
-                                    logger.info(f"Mevcut sayfa {page} bulundu")
-                                elif current_page_found and p.get_text().strip() == str(page + 1):
-                                    next_page_exists = True
-                                    next_page = p
-                                    logger.info(f"Sayfa numarası ile sonraki sayfa {page+1} bulundu")
-                                    break
-                            except:
-                                pass
-                        
-                        if not next_page_exists and not next_page:
-                            # Alternatif 2: Sonraki sayfa URL'sini doğrudan oluştur ve kontrol et
-                            test_next_url = f"{category_url}page/{page+1}/"
-                            try:
-                                test_response = requests.head(test_next_url, headers=headers, timeout=5)
-                                if test_response.status_code == 200:
-                                    has_more_pages = True
-                                    logger.info(f"Sonraki sayfa URL kontrolü başarılı: {test_next_url}")
-                                else:
-                                    has_more_pages = False
-                                    logger.info(f"Sonraki sayfa yok (HTTP {test_response.status_code}): {test_next_url}")
-                            except Exception as e:
-                                logger.warning(f"Sonraki sayfa kontrolü başarısız: {str(e)}")
-                                has_more_pages = False
-                    
-                    # Sonraki sayfaya geç veya döngüyü bitir
-                    if next_page or has_more_pages:
-                        page += 1
-                        # Her sayfa arasında kısa bir bekleme ekle
-                        logger.info(f"Sonraki sayfaya geçiliyor: {page}")
-                        time.sleep(1.5)  # Biraz daha uzun bekleyelim
-                    else:
-                        logger.info(f"Kategori için son sayfa: {page}")
-                        has_more_pages = False
-                        
-                except Exception as e:
-                    logger.error(f"Sayfa alınırken hata: {page_url} - {str(e)}")
-                    has_more_pages = False
+                            logger.info(f"Kanal URL'si eklendi: {href}")
+                
+                logger.info(f"Şu ana kadar toplanan toplam URL: {len(all_channel_urls)}")
+                
+                # Kategoriler arası geçişte 1 saniye bekle
+                time.sleep(1)
             
-            logger.info(f"Kategori tamamlandı: {category_url} - {category_channel_count} kanal bulundu")
-            # Kategoriler arası geçişte bekleyelim
-            time.sleep(2)
+            except Exception as e:
+                logger.error(f"URL işlenirken hata: {page_url} - {str(e)}")
         
         # URL'leri benzersiz hale getir
         all_channel_urls = list(set(all_channel_urls))
