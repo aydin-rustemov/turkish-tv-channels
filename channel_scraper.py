@@ -20,114 +20,136 @@ OUTPUT_FILE = "kanallar.m3u"
 METADATA_FILE = "metadata.json"
 
 def get_all_channel_urls():
-    """Site'deki tüm kanal URL'lerini toplar."""
-    all_channel_urls = []
-    
-    headers = {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
-    }
-    
+    """canlitv.vin sitesindeki tüm kanal URL'lerini toplar."""
     try:
-        # Doğrudan bilinen URL formatlarını ekle
+        logger.info("Tüm kanal URL'leri toplanıyor...")
+        
+        # Bilinen kanal URL'leri (direkt çalışan örnekler)
         known_channel_urls = [
-            # Doğrudan URL örnekleri
-            "https://www.canlitv.vin/now-tv-canli", 
-            "https://www.canlitv.vin/showtvcanli", 
+            "https://www.canlitv.vin/trt1-canliyayin",
+            "https://www.canlitv.vin/trt2-canli-izle",
+            "https://www.canlitv.vin/trt-haber",
             "https://www.canlitv.vin/kanal-d-canli-yayin",
-            "https://www.canlitv.vin/trt1-canli",
-            "https://www.canlitv.vin/atv-canli",
-            "https://www.canlitv.vin/fox-tv-canli",
             "https://www.canlitv.vin/star-tv-canli",
-            "https://www.canlitv.vin/tv8-canli",
-            "https://www.canlitv.vin/trt-haber-canli",
-            "https://www.canlitv.vin/haberturk-canli",
-            "https://www.canlitv.vin/cnn-turk-canli",
-            "https://www.canlitv.vin/trt-spor-canli",
-            "https://www.canlitv.vin/a-spor-canli",
-            "https://www.canlitv.vin/aspor-canli",
-            "https://www.canlitv.vin/trt-belgesel-canli",
-            "https://www.canlitv.vin/trt-cocuk-canli",
-            "https://www.canlitv.vin/kanal-7-canli",
-            "https://www.canlitv.vin/tv8-5-canli",
+            "https://www.canlitv.vin/show-tv-hd-canli",
+            "https://www.canlitv.vin/atv-canli-yayin-hd-izle",
+            "https://www.canlitv.vin/fox-tv-canli-yayin",
+            "https://www.canlitv.vin/tv8-hd-canli-yayin",
+            "https://www.canlitv.vin/tv8-5-canli-izle",
+            "https://www.canlitv.vin/kanal-7-hd-canli-yayin",
+            # Haber kanalları - düzeltilmiş formatlar
+            "https://www.canlitv.vin/cnn-turk-canli-yayin", # cnn-turk-izle -> cnn-turk-canli-yayin
+            "https://www.canlitv.vin/ntv-canli-yayin",     # ntv-izle -> ntv-canli-yayin
+            "https://www.canlitv.vin/haberturk-canli-yayin", # haberturk-izle -> haberturk-canli-yayin
+            "https://www.canlitv.vin/tgrt-haber-canli-yayin",
+            "https://www.canlitv.vin/tv100-canli-yayin",
+            "https://www.canlitv.vin/haber-global-canli-yayin",
+            # Müzik ve eğlence
             "https://www.canlitv.vin/trt-muzik-canli",
-            "https://www.canlitv.vin/idman-tv-canli",
-            "https://www.canlitv.vin/az-tv-canli",
-            "https://www.canlitv.vin/xezer-tv-canli",
-            "https://www.canlitv.vin/ictimai-tv-canli",
-            "https://www.canlitv.vin/trt-avaz-canli",
-            "https://www.canlitv.vin/trt-kurdi-canli"
+            "https://www.canlitv.vin/power-turk-tv-canli-hd-izle",
+            "https://www.canlitv.vin/dream-turk-canli-yayin",
+            "https://www.canlitv.vin/kral-tv-hd-canli-izle",
+            "https://www.canlitv.vin/kral-pop-tv-canli-hd-izle",
+            # Çocuk kanalları
+            "https://www.canlitv.vin/trt-cocuk-canli",
+            "https://www.canlitv.vin/minika-cocuk-canli-yayin",
+            "https://www.canlitv.vin/minika-go-canli-yayin"
         ]
-        all_channel_urls.extend(known_channel_urls)
-        logger.info(f"Bilinen kanal URL'leri eklendi: {len(known_channel_urls)}")
         
-        # Ana sayfayı incele
-        logger.info(f"Ana sayfa inceleniyor")
-        response = requests.get(BASE_URL, headers=headers, timeout=15)
+        # Bilinen URL'lerin formatlarını kullanarak daha fazla URL oluştur
+        channel_urls = set(known_channel_urls)  # Tekrarları önlemek için set kullanıyoruz
         
-        if response.status_code != 200:
-            logger.error(f"Ana sayfa yüklenirken hata: HTTP {response.status_code}")
-            return all_channel_urls if all_channel_urls else use_fallback_method()
-        
-        # HTML içeriğini kaydet
-        with open('ana_sayfa.html', 'w', encoding='utf-8') as f:
-            f.write(response.text)
-            logger.info("Ana sayfa HTML içeriği kaydedildi")
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Sayfadaki bütün kanal linklerini bul 
-        all_links = soup.find_all('a', href=True)
-        
-        for link in all_links:
-            href = link.get('href')
-            # Kanal linki olabilecek formatları kontrol et
-            if href and (('canli' in href) or ('izle' in href) or ('yayin' in href)):
-                # Çeşitli formatları deniyoruz
-                if href.startswith('/'):
-                    href = BASE_URL + href[1:]
-                elif not href.startswith('http'):
-                    href = urllib.parse.urljoin(BASE_URL, href)
-                
-                all_channel_urls.append(href)
-                logger.info(f"Ana sayfadan kanal bulundu: {href}")
-        
-        # Yan menüdeki kanal listesini özel olarak kontrol et (kanal listesi sayfada yan tarafta listelenmiş)
-        channel_list_elem = soup.select_one('div.kanallar-listesi') or soup.select_one('ul.kanallar') or soup.select_one('ul.menu')
-        
-        if channel_list_elem:
-            channel_links = channel_list_elem.find_all('a', href=True)
-            logger.info(f"Kanal listesinde {len(channel_links)} link bulundu")
+        # Ana sayfadan kanal linklerini analiz et ve topla
+        try:
+            # Ana sayfa
+            response = requests.get(BASE_URL, headers={"User-Agent": USER_AGENT}, timeout=15)
+            soup = BeautifulSoup(response.text, 'html.parser')
             
-            for link in channel_links:
-                href = link.get('href')
+            # Tüm linkleri bul
+            all_links = soup.find_all('a', href=True)
+            for link in all_links:
+                href = link['href']
                 
-                if href:
-                    # Tam URL oluştur
-                    if not href.startswith('http'):
-                        href = urllib.parse.urljoin(BASE_URL, href)
+                # Kanal linki olabilecek URL'leri filtrele
+                # Kanal linkleri genelde -canli, -izle, -yayin gibi kelimeler içerir
+                if (href.startswith('/') or href.startswith(BASE_URL)) and any(keyword in href.lower() for keyword in ['canli', 'izle', 'yayin']):
+                    if href.startswith('/'):
+                        full_url = BASE_URL + href
+                    else:
+                        full_url = href
+                        
+                    # URL'yi temizle ve normalize et
+                    if not full_url.startswith('http'):
+                        full_url = 'https://' + full_url.lstrip('/')
+                        
+                    channel_urls.add(full_url)
+            
+            logger.info(f"Ana sayfadan {len(channel_urls) - len(known_channel_urls)} yeni kanal URL'si bulundu")
+            
+            # Otomatik keşfedilen URL'leri düzelt
+            corrected_urls = set()
+            for url in channel_urls:
+                # URL üzerinde düzeltmeler yap
+                if "cnn-turk-izle" in url:
+                    corrected_urls.add(url.replace("cnn-turk-izle", "cnn-turk-canli-yayin"))
+                elif "ntv-izle" in url:
+                    corrected_urls.add(url.replace("ntv-izle", "ntv-canli-yayin"))
+                elif "haberturk-izle" in url:
+                    corrected_urls.add(url.replace("haberturk-izle", "haberturk-canli-yayin"))
+                else:
+                    corrected_urls.add(url)
+            
+            channel_urls = corrected_urls
+            
+            # Kategori sayfalarını da tara
+            category_paths = [
+                "/tv-kanallari",
+                "/haber-kanallari",
+                "/spor-kanallari", 
+                "/muzik-kanallari",
+                "/sinema-kanallari",
+                "/belgesel-kanallari",
+                "/cocuk-kanallari",
+                "/dini-kanallar",
+                "/azerbaycan-kanallari"
+            ]
+            
+            for category_path in category_paths:
+                try:
+                    category_url = BASE_URL + category_path
+                    logger.info(f"Kategori sayfası taranıyor: {category_url}")
                     
-                    # Kanal URL'si mi kontrol et
-                    if 'canli' in href.lower() or 'izle' in href.lower() or 'yayin' in href.lower():
-                        all_channel_urls.append(href)
-                        logger.info(f"Kanal menüsünden URL bulundu: {href}")
-        
-        # URL'leri benzersiz hale getir
-        all_channel_urls = list(set(all_channel_urls))
-        logger.info(f"Toplam {len(all_channel_urls)} benzersiz kanal URL'si bulundu")
-        
-        # Eğer hiç URL bulunamadıysa, alternatif metod kullanılacak
-        if not all_channel_urls:
-            logger.warning("Hiç kanal URL'si bulunamadı, alternatif metoda geçiliyor...")
-            return use_fallback_method()
+                    response = requests.get(category_url, headers={"User-Agent": USER_AGENT}, timeout=15)
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    category_links = soup.find_all('a', href=True)
+                    for link in category_links:
+                        href = link['href']
+                        if (href.startswith('/') or href.startswith(BASE_URL)) and any(keyword in href.lower() for keyword in ['canli', 'izle', 'yayin']):
+                            if href.startswith('/'):
+                                full_url = BASE_URL + href
+                            else:
+                                full_url = href
+                                
+                            # URL'yi temizle ve normalize et
+                            if not full_url.startswith('http'):
+                                full_url = 'https://' + full_url.lstrip('/')
+                                
+                            channel_urls.add(full_url)
+                            
+                except Exception as category_error:
+                    logger.warning(f"Kategori sayfası tarama hatası: {category_error}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Ana sayfa tarama hatası: {e}")
             
-        return all_channel_urls
-    
+        logger.info(f"Toplam {len(channel_urls)} kanal URL'si bulundu")
+        return list(channel_urls)
+        
     except Exception as e:
-        logger.error(f"Kanal URL'leri alınırken hata: {str(e)}")
-        logger.warning("Alternatif metod kullanılacak")
-        return use_fallback_method()
+        logger.error(f"Kanal URL'leri toplanırken hata: {e}")
+        return []
 
 def use_fallback_method():
     """Alternatif URL çıkarma metodu - önceki değişiklikler başarısız olursa"""
@@ -2172,79 +2194,96 @@ def check_m3u_urls(channels):
     return unique_valid_channels
 
 def save_all_channel_pages():
-    """Her kanalın HTML içeriğini debug_channels klasörüne kaydeder"""
-    try:
-        # Debug klasörünü oluştur
-        os.makedirs('debug_channels', exist_ok=True)
-        logger.info("debug_channels klasörü oluşturuldu")
+    """Tüm kanal sayfalarını kaydeder - debug için kullanılır"""
+    logger.info("Tüm kanal sayfaları indiriliyor ve kaydediliyor...")
+    
+    # Debug klasörü oluştur
+    debug_dir = "debug_channels"
+    os.makedirs(debug_dir, exist_ok=True)
+    
+    # Tüm URL'leri topla
+    channel_urls = get_all_channel_urls()
+    
+    # Hatalı URL'ler için düzeltmeler
+    url_corrections = {
+        "cnn-turk-izle": "cnn-turk-canli-yayin",
+        "ntv-izle": "ntv-canli-yayin",
+        "haberturk-izle": "haberturk-canli-yayin"
+    }
+    
+    processed_count = 0
+    for url in channel_urls:
+        # Kanal adını URL'den çıkar
+        channel_slug = url.rstrip('/').split('/')[-1]
         
-        # Bazı bilinen kanalların listesi
-        channels_to_check = [
-            "trt1-izle",
-            "atv-izle", 
-            "fox-tv-izle",
-            "show-tv-izle",
-            "kanal-d-izle",
-            "star-tv-izle",
-            "tv8-izle",
-            "cnn-turk-izle",
-            "ntv-izle",
-            "haberturk-izle"
-        ]
+        # Hatalı URL formatlarını düzelt
+        for wrong_format, correct_format in url_corrections.items():
+            if wrong_format in url:
+                url = url.replace(wrong_format, correct_format)
+                channel_slug = correct_format
+                logger.info(f"URL düzeltildi: {wrong_format} -> {correct_format}")
         
-        headers = {
-            'User-Agent': USER_AGENT,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
-        }
+        logger.info(f"Kanal sayfası indiriliyor: {channel_slug}")
         
-        # Her kanalı kaydet
-        for channel in channels_to_check:
-            try:
-                channel_url = f"{BASE_URL}{channel}"
-                logger.info(f"Kanal sayfası indiriliyor: {channel}")
+        try:
+            # Sayfayı indir
+            response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=15)
+            
+            if response.status_code != 200:
+                logger.error(f"Kanal sayfası yüklenemedi: HTTP {response.status_code}")
+                continue
                 
-                response = requests.get(channel_url, headers=headers, timeout=15)
-                if response.status_code == 200:
-                    # Dosya adını oluştur
-                    filename = f"debug_channels/{channel}.html"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write(response.text)
-                    logger.info(f"Kanal HTML içeriği kaydedildi: {filename}")
-                    
-                    # İframe varsa onun içeriğini de kaydet
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    iframes = soup.find_all('iframe')
-                    
-                    for i, iframe in enumerate(iframes):
-                        src = iframe.get('src')
-                        if src:
-                            if not src.startswith('http'):
-                                src = urllib.parse.urljoin(BASE_URL, src)
-                            
-                            try:
-                                iframe_response = requests.get(src, headers=headers, timeout=10)
-                                if iframe_response.status_code == 200:
-                                    iframe_filename = f"debug_channels/{channel}_iframe_{i}.html"
-                                    with open(iframe_filename, 'w', encoding='utf-8') as f:
-                                        f.write(iframe_response.text)
-                                    logger.info(f"İframe içeriği kaydedildi: {iframe_filename}")
-                            except Exception as e:
-                                logger.error(f"İframe içeriği alınamadı: {src} - {e}")
-                else:
-                    logger.error(f"Kanal sayfası yüklenemedi: HTTP {response.status_code}")
+            # Sayfayı kaydet
+            with open(f"{debug_dir}/{channel_slug}.html", "w", encoding="utf-8") as f:
+                f.write(response.text)
                 
-                # Rate limiting
+            logger.info(f"Kanal HTML içeriği kaydedildi: {debug_dir}/{channel_slug}.html")
+            
+            # Sayfadaki iframe'leri bul ve içeriklerini kaydet
+            soup = BeautifulSoup(response.text, 'html.parser')
+            iframes = soup.find_all('iframe')
+            
+            for i, iframe in enumerate(iframes):
+                iframe_src = iframe.get('src', '')
+                
+                # iframe src'yi normalize et
+                if iframe_src:
+                    if iframe_src.startswith('//'):
+                        iframe_src = 'https:' + iframe_src
+                    elif not iframe_src.startswith('http'):
+                        iframe_src = urllib.parse.urljoin(url, iframe_src)
+                        
+                    try:
+                        # iframe içeriğini indir
+                        iframe_response = requests.get(iframe_src, headers={
+                            "User-Agent": USER_AGENT,
+                            "Referer": url
+                        }, timeout=15)
+                        
+                        if iframe_response.status_code == 200:
+                            # iframe içeriğini kaydet
+                            with open(f"{debug_dir}/{channel_slug}_iframe_{i}.html", "w", encoding="utf-8") as f:
+                                f.write(iframe_response.text)
+                                
+                            logger.info(f"İframe içeriği kaydedildi: {debug_dir}/{channel_slug}_iframe_{i}.html")
+                    except Exception as iframe_error:
+                        logger.warning(f"İframe indirilirken hata: {iframe_error}")
+            
+            processed_count += 1
+            
+            # Her 10 sayfada bir 2 saniye bekle - rate limiting'i önlemek için
+            if processed_count % 10 == 0:
                 time.sleep(2)
+            else:
+                time.sleep(1)  # Her sayfa arasında 1 saniye bekle
                 
-            except Exception as e:
-                logger.error(f"Kanal sayfası işlenirken hata: {channel} - {e}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"Kanal sayfalarını kaydetme hatası: {e}")
-        return False
+        except Exception as e:
+            logger.error(f"Kanal sayfası kaydedilirken hata: {e}")
+            
+        # Her sayfa arasında 2 saniye bekle - rate limiting
+        time.sleep(2)
+    
+    logger.info(f"Toplam {processed_count} kanal sayfası başarıyla kaydedildi.")
 
 def main():
     logger.info("Kanal çekme işlemi başlıyor...")
