@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 import logging
 import urllib.parse
+import random
 
 # Logging ayarları
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,136 +21,210 @@ OUTPUT_FILE = "kanallar.m3u"
 METADATA_FILE = "metadata.json"
 
 def get_all_channel_urls():
-    """canlitv.vin sitesindeki tüm kanal URL'lerini toplar."""
+    """
+    Ana sayfayı analiz ederek tüm kanal linklerini çıkarır
+    """
+    logger.info("Tüm kanal URL'leri toplanıyor...")
     try:
-        logger.info("Tüm kanal URL'leri toplanıyor...")
+        response = requests.get("https://www.canlitv.vin", timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Bilinen kanal URL'leri (direkt çalışan örnekler)
-        known_channel_urls = [
-            "https://www.canlitv.vin/trt1-canliyayin",
+        # Tüm potansiyel linkleri topla
+        all_links = set()
+        for a_tag in soup.find_all('a', href=True):
+            href = a_tag['href']
+            
+            # Tam URL'e dönüştür
+            if href.startswith('/'):
+                href = f"https://www.canlitv.vin{href}"
+            elif not href.startswith(('http://', 'https://')):
+                href = f"https://www.canlitv.vin/{href}"
+                
+            # Kanal olabilecek linkleri filtrele
+            if any(keyword in href.lower() for keyword in ['canli', 'izle', 'yayin']) and 'category' not in href:
+                all_links.add(href)
+        
+        # Menü öğelerini ve kategori sayfalarını işle
+        menu_items = soup.select('.navbar-nav .nav-item a, .sidebar .widget a')
+        for item in menu_items:
+            href = item.get('href')
+            if href and ('category' in href or 'etiket' in href):
+                try:
+                    category_response = requests.get(href, timeout=10)
+                    category_soup = BeautifulSoup(category_response.text, 'html.parser')
+                    for cat_link in category_soup.find_all('a', href=True):
+                        cat_href = cat_link['href']
+                        if any(keyword in cat_href.lower() for keyword in ['canli', 'izle', 'yayin']) and 'category' not in cat_href:
+                            if cat_href.startswith('/'):
+                                cat_href = f"https://www.canlitv.vin{cat_href}"
+                            elif not cat_href.startswith(('http://', 'https://')):
+                                cat_href = f"https://www.canlitv.vin/{cat_href}"
+                            all_links.add(cat_href)
+                except Exception as e:
+                    logger.error(f"Kategori sayfası işlenirken hata: {e}")
+                    continue
+        
+        # Tespit edilen URL'lerden kanal adlarını çıkar ve alternatif formatlar oluştur
+        channel_names = set()
+        for link in all_links:
+            parts = link.split('/')
+            if len(parts) > 3:
+                channel_name = parts[-1]
+                if 'canli' in channel_name or 'izle' in channel_name:
+                    base_name = channel_name.replace('-canli', '').replace('-izle', '').replace('-yayin', '')
+                    channel_names.add(base_name)
+        
+        # Alternatif URL formatları oluştur
+        for name in list(channel_names):
+            all_links.add(f"https://www.canlitv.vin/{name}-canli")
+            all_links.add(f"https://www.canlitv.vin/{name}-canli-izle")
+            all_links.add(f"https://www.canlitv.vin/{name}-canli-yayin")
+        
+        # Bilinen kanal URL'lerini ekle (hata durumlarına karşı)
+        known_urls = [
+            # Ulusal kanallar
+            "https://www.canlitv.vin/trt1-canli-izle",
+            "https://www.canlitv.vin/atv-canli-izle",
+            "https://www.canlitv.vin/show-tv-canli-izle",
+            "https://www.canlitv.vin/fox-tv-canli-izle",
+            "https://www.canlitv.vin/star-tv-canli-izle",
+            "https://www.canlitv.vin/kanal-d-canli-izle",
+            "https://www.canlitv.vin/tv8-canli-izle",
+            "https://www.canlitv.vin/kanal-7-canli-izle",
+            "https://www.canlitv.vin/360-tv-canli-izle",
+            "https://www.canlitv.vin/teve2-canli-izle",
+            "https://www.canlitv.vin/beyaz-tv-canli-izle",
             "https://www.canlitv.vin/trt2-canli-izle",
-            "https://www.canlitv.vin/trt-haber",
-            "https://www.canlitv.vin/kanal-d-canli-yayin",
-            "https://www.canlitv.vin/star-tv-canli",
-            "https://www.canlitv.vin/show-tv-hd-canli",
-            "https://www.canlitv.vin/atv-canli-yayin-hd-izle",
-            "https://www.canlitv.vin/fox-tv-canli-yayin",
-            "https://www.canlitv.vin/tv8-hd-canli-yayin",
+            "https://www.canlitv.vin/trt-turk-canli-izle",
+            "https://www.canlitv.vin/trt-avaz-canli-izle",
+            # Haber kanalları
+            "https://www.canlitv.vin/trt-haber-canli-izle",
+            "https://www.canlitv.vin/cnn-turk-canli-izle",
+            "https://www.canlitv.vin/haberturk-canli-izle",
+            "https://www.canlitv.vin/ntv-canli-izle",
+            "https://www.canlitv.vin/tv100-canli-izle",
+            "https://www.canlitv.vin/halk-tv-canli-izle",
+            "https://www.canlitv.vin/tele1-canli-izle",
+            "https://www.canlitv.vin/krt-tv-canli-izle",
+            "https://www.canlitv.vin/sozcu-tv-canli-izle",
+            "https://www.canlitv.vin/ekoturk-canli-izle",
+            "https://www.canlitv.vin/bloomberg-ht-canli-izle",
+            "https://www.canlitv.vin/ulke-tv-canli-izle",
+            "https://www.canlitv.vin/a-haber-canli-izle",
+            "https://www.canlitv.vin/tgrt-haber-canli-izle",
+            "https://www.canlitv.vin/tvnet-canli-izle",
+            "https://www.canlitv.vin/24-tv-canli-izle",
+            "https://www.canlitv.vin/kanal-24-canli-izle",
+            "https://www.canlitv.vin/flash-haber-canli-izle",
+            "https://www.canlitv.vin/benguturk-canli-izle",
+            "https://www.canlitv.vin/akit-tv-canli-izle",
+            # Spor kanalları
+            "https://www.canlitv.vin/trt-spor-canli-izle",
+            "https://www.canlitv.vin/trt-spor-yildiz-canli-izle",
+            "https://www.canlitv.vin/spor-smart-canli-izle",
+            "https://www.canlitv.vin/spor-smart2-canli-izle",
             "https://www.canlitv.vin/tv8-5-canli-izle",
-            "https://www.canlitv.vin/kanal-7-hd-canli-yayin",
-            # Haber kanalları - düzeltilmiş formatlar
-            "https://www.canlitv.vin/cnn-turk-canli-yayin", # cnn-turk-izle -> cnn-turk-canli-yayin
-            "https://www.canlitv.vin/ntv-canli-yayin",     # ntv-izle -> ntv-canli-yayin
-            "https://www.canlitv.vin/haberturk-canli-yayin", # haberturk-izle -> haberturk-canli-yayin
-            "https://www.canlitv.vin/tgrt-haber-canli-yayin",
-            "https://www.canlitv.vin/tv100-canli-yayin",
-            "https://www.canlitv.vin/haber-global-canli-yayin",
-            # Müzik ve eğlence
-            "https://www.canlitv.vin/trt-muzik-canli",
-            "https://www.canlitv.vin/power-turk-tv-canli-hd-izle",
-            "https://www.canlitv.vin/dream-turk-canli-yayin",
-            "https://www.canlitv.vin/kral-tv-hd-canli-izle",
-            "https://www.canlitv.vin/kral-pop-tv-canli-hd-izle",
+            "https://www.canlitv.vin/gstv-canli-izle",
+            "https://www.canlitv.vin/fb-tv-canli-izle",
+            "https://www.canlitv.vin/bjk-tv-canli-izle",
+            "https://www.canlitv.vin/a-spor-canli-izle",
+            # Belgesel kanalları
+            "https://www.canlitv.vin/trt-belgesel-canli-izle",
+            "https://www.canlitv.vin/nat-geo-wild-canli-izle",
+            "https://www.canlitv.vin/discovery-channel-canli-izle",
+            "https://www.canlitv.vin/tlc-canli-izle",
+            "https://www.canlitv.vin/dmax-canli-izle",
+            # Azerbaycan kanalları
+            "https://www.canlitv.vin/az-tv-canli",
+            "https://www.canlitv.vin/azerbaycan-tv-canli-izle",
+            "https://www.canlitv.vin/idman-tv-canli",
+            "https://www.canlitv.vin/ictimai-tv-canli",
+            "https://www.canlitv.vin/atv-az-canli",
+            "https://www.canlitv.vin/xezer-tv-canli",
+            "https://www.canlitv.vin/space-tv-az-canli",
+            "https://www.canlitv.vin/cbc-azerbaijan-canli",
+            "https://www.canlitv.vin/arb-tv-canli",
+            "https://www.canlitv.vin/atv-azerbaijan-canli-izle",
+            "https://www.canlitv.vin/lider-tv-canli",
+            "https://www.canlitv.vin/medeniyyet-tv-canli",
+            "https://www.canlitv.vin/arb24-canli",
+            # Müzik kanalları
+            "https://www.canlitv.vin/trt-muzik-canli-izle",
+            "https://www.canlitv.vin/kral-tv-canli-izle",
+            "https://www.canlitv.vin/kral-pop-canli-izle",
+            "https://www.canlitv.vin/dream-turk-canli-izle",
+            "https://www.canlitv.vin/power-turk-canli-izle",
+            "https://www.canlitv.vin/power-tv-canli-izle",
+            "https://www.canlitv.vin/milyontv-canli-izle",
+            "https://www.canlitv.vin/number1-tv-canli-izle",
+            "https://www.canlitv.vin/number1-turk-canli-izle",
             # Çocuk kanalları
-            "https://www.canlitv.vin/trt-cocuk-canli",
-            "https://www.canlitv.vin/minika-cocuk-canli-yayin",
-            "https://www.canlitv.vin/minika-go-canli-yayin"
+            "https://www.canlitv.vin/trt-cocuk-canli-izle",
+            "https://www.canlitv.vin/minika-go-canli-izle",
+            "https://www.canlitv.vin/minika-cocuk-canli-izle",
+            "https://www.canlitv.vin/cartoon-network-canli-izle",
+            # Özel Tematik Kanallar
+            "https://www.canlitv.vin/eurostar-canli-hd"
         ]
         
-        # Bilinen URL'lerin formatlarını kullanarak daha fazla URL oluştur
-        channel_urls = set(known_channel_urls)  # Tekrarları önlemek için set kullanıyoruz
+        # Bilinen URL'leri ekle
+        for url in known_urls:
+            all_links.add(url)
         
-        # Ana sayfadan kanal linklerini analiz et ve topla
-        try:
-            # Ana sayfa
-            response = requests.get(BASE_URL, headers={"User-Agent": USER_AGENT}, timeout=15)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Tüm linkleri bul
-            all_links = soup.find_all('a', href=True)
-            for link in all_links:
-                href = link['href']
-                
-                # Kanal linki olabilecek URL'leri filtrele
-                # Kanal linkleri genelde -canli, -izle, -yayin gibi kelimeler içerir
-                if (href.startswith('/') or href.startswith(BASE_URL)) and any(keyword in href.lower() for keyword in ['canli', 'izle', 'yayin']):
-                    if href.startswith('/'):
-                        full_url = BASE_URL + href
-                    else:
-                        full_url = href
-                        
-                    # URL'yi temizle ve normalize et
-                    if not full_url.startswith('http'):
-                        full_url = 'https://' + full_url.lstrip('/')
-                        
-                    channel_urls.add(full_url)
-            
-            logger.info(f"Ana sayfadan {len(channel_urls) - len(known_channel_urls)} yeni kanal URL'si bulundu")
-            
-            # Otomatik keşfedilen URL'leri düzelt
-            corrected_urls = set()
-            for url in channel_urls:
-                # URL üzerinde düzeltmeler yap
-                if "cnn-turk-izle" in url:
-                    corrected_urls.add(url.replace("cnn-turk-izle", "cnn-turk-canli-yayin"))
-                elif "ntv-izle" in url:
-                    corrected_urls.add(url.replace("ntv-izle", "ntv-canli-yayin"))
-                elif "haberturk-izle" in url:
-                    corrected_urls.add(url.replace("haberturk-izle", "haberturk-canli-yayin"))
-                else:
-                    corrected_urls.add(url)
-            
-            channel_urls = corrected_urls
-            
-            # Kategori sayfalarını da tara
-            category_paths = [
-                "/tv-kanallari",
-                "/haber-kanallari",
-                "/spor-kanallari", 
-                "/muzik-kanallari",
-                "/sinema-kanallari",
-                "/belgesel-kanallari",
-                "/cocuk-kanallari",
-                "/dini-kanallar",
-                "/azerbaycan-kanallari"
-            ]
-            
-            for category_path in category_paths:
-                try:
-                    category_url = BASE_URL + category_path
-                    logger.info(f"Kategori sayfası taranıyor: {category_url}")
-                    
-                    response = requests.get(category_url, headers={"User-Agent": USER_AGENT}, timeout=15)
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    
-                    category_links = soup.find_all('a', href=True)
-                    for link in category_links:
-                        href = link['href']
-                        if (href.startswith('/') or href.startswith(BASE_URL)) and any(keyword in href.lower() for keyword in ['canli', 'izle', 'yayin']):
-                            if href.startswith('/'):
-                                full_url = BASE_URL + href
-                            else:
-                                full_url = href
-                                
-                            # URL'yi temizle ve normalize et
-                            if not full_url.startswith('http'):
-                                full_url = 'https://' + full_url.lstrip('/')
-                                
-                            channel_urls.add(full_url)
-                            
-                except Exception as category_error:
-                    logger.warning(f"Kategori sayfası tarama hatası: {category_error}")
-                    continue
-                    
-        except Exception as e:
-            logger.error(f"Ana sayfa tarama hatası: {e}")
-            
-        logger.info(f"Toplam {len(channel_urls)} kanal URL'si bulundu")
-        return list(channel_urls)
+        # URL'leri kontrol et ve düzelt
+        checked_urls = check_and_fix_urls(all_links)
+        
+        logger.info(f"Toplam {len(checked_urls)} kanal URL'si bulundu")
+        return checked_urls
         
     except Exception as e:
-        logger.error(f"Kanal URL'leri toplanırken hata: {e}")
+        logger.error(f"Tüm kanal URL'leri toplanırken hata: {e}")
         return []
+
+def check_and_fix_urls(url_list):
+    """URL'leri kontrol eder, çalışmayanları otomatik düzeltmeye çalışır."""
+    working_urls = []
+    fixed_count = 0
+    
+    for url in url_list:
+        try:
+            # Önce URL'yi olduğu gibi dene
+            response = requests.head(url, headers={"User-Agent": USER_AGENT}, timeout=5)
+            
+            if response.status_code < 400:
+                # URL çalışıyor
+                working_urls.append(url)
+                logger.info(f"URL çalışıyor: {url}")
+            else:
+                # URL çalışmıyor, düzeltmeye çalış
+                channel_name = url.rstrip('/').split('/')[-1]
+                
+                # Format varyasyonlarını dene
+                format_variants = [
+                    f"{BASE_URL}{channel_name.replace('-canli', '')}-canli-yayin",
+                    f"{BASE_URL}{channel_name.replace('-izle', '')}-canli-izle",
+                    f"{BASE_URL}{channel_name.replace('-tv', '')}-televizyonu-canli-izle",
+                    f"{BASE_URL}{channel_name.split('-')[0]}-tv-canli-yayin"
+                ]
+                
+                for variant in format_variants:
+                    try:
+                        variant_response = requests.head(variant, headers={"User-Agent": USER_AGENT}, timeout=5)
+                        if variant_response.status_code < 400:
+                            # Düzeltilmiş URL çalışıyor
+                            working_urls.append(variant)
+                            logger.info(f"URL düzeltildi: {url} -> {variant}")
+                            fixed_count += 1
+                            break
+                    except:
+                        continue
+        except Exception as e:
+            # İstek hatası, URL'yi olduğu gibi ekle
+            working_urls.append(url)
+    
+    logger.info(f"URL kontrolü tamamlandı: {len(working_urls)} çalışan URL, {fixed_count} URL düzeltildi")
+    return working_urls
 
 def use_fallback_method():
     """Alternatif URL çıkarma metodu - önceki değişiklikler başarısız olursa"""
@@ -1252,7 +1327,25 @@ def extract_geolive_with_selenium(iframe_url, referer_url):
                             f"https://tv-{channel_name.replace('-canli-yayin', '')}.medya.trt.com.tr/master.m3u8",
                             # Özel TV kanalları için patternler
                             f"https://{channel_name.split('-')[0]}.blutv.com/blutv_{channel_name.split('-')[0]}/live.m3u8",
+                            # Azerbaycan kanalları için özel patternler
+                            f"https://streams.livetv.az/{channel_name}/playlist.m3u8",
+                            f"https://streams.livetv.az/azerbaycan/{channel_name}/playlist.m3u8",
+                            f"https://yayin.canlitv.day/{channel_name}/playlist.m3u8"
                         ]
+                        
+                        # Azerbaycan kanalları için özel patternler
+                        if any(keyword in channel_name.lower() for keyword in ['az', 'azerbaijan', 'azerbaycan', 'idman', 'ictimai', 'xezer']):
+                            azerbaijan_patterns = [
+                                "https://streams.livetv.az/azerbaijan/ictimai_stream2/playlist.m3u8",
+                                "https://streams.livetv.az/azerbaijan/aztv_stream2/playlist.m3u8",
+                                "https://streams.livetv.az/azerbaijan/idman_stream/playlist.m3u8",
+                                "https://streams.livetv.az/azerbaijan/xazar_sd_stream_2/playlist.m3u8",
+                                "https://live.livestreamtv.ca/azstar/smil:azstar.smil/playlist.m3u8",
+                                "https://streams.livetv.az/azerbaijan/cbc_stream1/playlist.m3u8",
+                                "https://streams.livetv.az/azerbaijan/arb24_stream1/playlist.m3u8"
+                            ]
+                            known_patterns.extend(azerbaijan_patterns)
+                            logger.info(f"Azerbaycan kanalı tespit edildi, {len(azerbaijan_patterns)} özel pattern eklendi")
                         
                         # Eurostar ve diğer tematik kanallar için özel patternler
                         if "eurostar" in channel_name:
@@ -1520,7 +1613,25 @@ def extract_geolive_with_selenium(iframe_url, referer_url):
                     f"https://tv-{channel_name.replace('-canli-yayin', '')}.medya.trt.com.tr/master.m3u8",
                     # Özel TV kanalları için patternler
                     f"https://{channel_name.split('-')[0]}.blutv.com/blutv_{channel_name.split('-')[0]}/live.m3u8",
+                    # Azerbaycan kanalları için özel patternler
+                    f"https://streams.livetv.az/{channel_name}/playlist.m3u8",
+                    f"https://streams.livetv.az/azerbaycan/{channel_name}/playlist.m3u8",
+                    f"https://yayin.canlitv.day/{channel_name}/playlist.m3u8"
                 ]
+                
+                # Azerbaycan kanalları için özel patternler
+                if any(keyword in channel_name.lower() for keyword in ['az', 'azerbaijan', 'azerbaycan', 'idman', 'ictimai', 'xezer']):
+                    azerbaijan_patterns = [
+                        "https://streams.livetv.az/azerbaijan/ictimai_stream2/playlist.m3u8",
+                        "https://streams.livetv.az/azerbaijan/aztv_stream2/playlist.m3u8",
+                        "https://streams.livetv.az/azerbaijan/idman_stream/playlist.m3u8",
+                        "https://streams.livetv.az/azerbaijan/xazar_sd_stream_2/playlist.m3u8",
+                        "https://live.livestreamtv.ca/azstar/smil:azstar.smil/playlist.m3u8",
+                        "https://streams.livetv.az/azerbaijan/cbc_stream1/playlist.m3u8",
+                        "https://streams.livetv.az/azerbaijan/arb24_stream1/playlist.m3u8"
+                    ]
+                    known_patterns.extend(azerbaijan_patterns)
+                    logger.info(f"Azerbaycan kanalı tespit edildi, {len(azerbaijan_patterns)} özel pattern eklendi")
                 
                 # Eurostar ve diğer tematik kanallar için özel patternler
                 if "eurostar" in channel_name:
@@ -2018,73 +2129,112 @@ def extract_with_selenium(url):
         return None
 
 def create_m3u_file(channels):
-    """Toplanan kanal bilgilerinden m3u dosyası oluşturur."""
+    """
+    Verilen kanallar listesini kullanarak M3U dosyası oluşturur
+    """
     try:
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+        # Kanalları önceliğe göre sırala
+        channels.sort(key=determine_channel_priority)
+        
+        # Kategorilere ayır
+        turkish_channels = []
+        azerbaijan_channels = []
+        other_channels = []
+        
+        for channel in channels:
+            name = channel.get('name', '').lower()
+            url = channel.get('url', '').lower()
+            
+            # Azerbaycan kanalları
+            if any(x in name or x in url for x in ['az tv', 'azerbaijan', 'azerbaycan', 'idman', 'ictimai', 'xezer', 'space tv az', 'cbc az', 'arb']):
+                azerbaijan_channels.append(channel)
+            # Türkçe kanallar
+            elif '.tr' in url or 'turkiye' in name or 'türkiye' in name or 'trt' in name or 'canli' in url:
+                turkish_channels.append(channel)
+            # Diğer kanallar
+            else:
+                other_channels.append(channel)
+        
+        with open("tv_channels.m3u", "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
             
-            # Önce Türk, sonra Azerbaycan kanallarını sırala
-            sorted_channels = sorted(channels, key=lambda c: determine_channel_priority(c))
+            # Türk kanalları
+            f.write("\n#EXTINF:-1 group-title=\"+++ TÜRK KANALLARI +++\" tvg-logo=\"\",--- TÜRK KANALLARI ---\n")
+            f.write("https://example.com/blank.mp4\n")  # Boş giriş
             
-            for channel in sorted_channels:
-                if channel.get('m3u_url'):
-                    # URL'lerde http yoksa ekleyelim
-                    m3u_url = channel['m3u_url']
-                    if not m3u_url.startswith('http'):
-                        m3u_url = urllib.parse.urljoin(BASE_URL, m3u_url)
+            for channel in turkish_channels:
+                logo = channel.get('logo', '')
+                tvg_id = f" tvg-id=\"{channel['name']}\"" if channel.get('name') else ""
+                group = " group-title=\"Türkiye\"" if not channel.get('group') else f" group-title=\"{channel['group']}\""
+                tvg_logo = f" tvg-logo=\"{logo}\"" if logo else ""
+                
+                f.write(f"#EXTINF:-1{tvg_id}{group}{tvg_logo},{channel['name']}\n")
+                f.write(f"{channel['stream_url']}\n")
+            
+            # Azerbaycan kanalları
+            if azerbaijan_channels:
+                f.write("\n#EXTINF:-1 group-title=\"+++ AZERBAYCAN KANALLARI +++\" tvg-logo=\"\",--- AZERBAYCAN KANALLARI ---\n")
+                f.write("https://example.com/blank.mp4\n")  # Boş giriş
+                
+                for channel in azerbaijan_channels:
+                    logo = channel.get('logo', '')
+                    tvg_id = f" tvg-id=\"{channel['name']}\"" if channel.get('name') else ""
+                    group = " group-title=\"Azerbaycan\"" 
+                    tvg_logo = f" tvg-logo=\"{logo}\"" if logo else ""
                     
-                    f.write(f"#EXTINF:-1,{channel['name']}\n")
-                    f.write(f"{m3u_url}\n")
+                    f.write(f"#EXTINF:-1{tvg_id}{group}{tvg_logo},{channel['name']}\n")
+                    f.write(f"{channel['stream_url']}\n")
             
-        logger.info(f"M3U dosyası oluşturuldu: {OUTPUT_FILE}")
+            # Diğer kanallar
+            if other_channels:
+                f.write("\n#EXTINF:-1 group-title=\"+++ DİĞER KANALLAR +++\" tvg-logo=\"\",--- DİĞER KANALLAR ---\n")
+                f.write("https://example.com/blank.mp4\n")  # Boş giriş
+                
+                for channel in other_channels:
+                    logo = channel.get('logo', '')
+                    tvg_id = f" tvg-id=\"{channel['name']}\"" if channel.get('name') else ""
+                    group = " group-title=\"Diğer\"" if not channel.get('group') else f" group-title=\"{channel['group']}\""
+                    tvg_logo = f" tvg-logo=\"{logo}\"" if logo else ""
+                    
+                    f.write(f"#EXTINF:-1{tvg_id}{group}{tvg_logo},{channel['name']}\n")
+                    f.write(f"{channel['stream_url']}\n")
+        
+        logger.info(f"M3U dosyası oluşturuldu: {len(turkish_channels)} Türk kanalı, {len(azerbaijan_channels)} Azerbaycan kanalı, {len(other_channels)} diğer kanal")
         return True
     except Exception as e:
         logger.error(f"M3U dosyası oluşturulurken hata: {e}")
         return False
 
-def determine_channel_priority(channel):
-    """Kanal sıralama önceliğini belirler. 
-    Türk kanalları önce, Azerbaycan kanalları sonra, diğerleri en sonda."""
-    name = channel['name'].lower()
+def determine_channel_priority(channel_info):
+    """
+    Kanalın sıralama önceliğini belirler
+    """
+    name = channel_info.get('name', '').lower()
+    url = channel_info.get('url', '').lower()
     
-    # Ulusal Türk kanalları önce
-    national_turkish = ['trt 1', 'trt1', 'atv', 'show tv', 'showtv', 'star tv', 'startv', 'kanal d', 'kanald', 'fox tv', 'foxtv', 'tv8', 'tv 8']
-    for prefix in national_turkish:
-        if name.startswith(prefix) or name.replace(' ', '') == prefix.replace(' ', ''):
-            return 0
-            
-    # TRT kanalları grubu
-    if 'trt' in name:
+    # Ulusal ana kanallar en üstte
+    if any(x in name for x in ['trt1', 'atv', 'show', 'fox', 'star', 'kanal d', 'tv8', 'kanal7']):
         return 1
     
-    # Haber kanalları grubu
-    news_channels = ['haber', 'cnn', 'ntv', 'haberturk', 'haber türk', 'a haber', 'tgrt']
-    for news in news_channels:
-        if news in name:
-            return 2
+    # Haber kanalları
+    elif any(x in name for x in ['haber', 'cnn', 'ntv', 'tv100', 'halk tv', 'tele1']):
+        return 2
     
-    # Spor kanalları grubu
-    sports_channels = ['spor', 'sport', 'sports', 'futbol', 'gol', 'goal']
-    for sport in sports_channels:
-        if sport in name:
-            return 3
+    # Spor kanalları
+    elif any(x in name for x in ['spor', 'smart', 'gs tv', 'fb tv', 'bjk']):
+        return 3
     
-    # Müzik kanalları grubu
-    music_channels = ['müzik', 'muzik', 'music', 'number one', 'numberone', 'powertürk', 'powerturk', 'kral']
-    for music in music_channels:
-        if music in name:
-            return 4
+    # Belgesel kanalları
+    elif any(x in name for x in ['belgesel', 'nat geo', 'discovery', 'trt belgesel']):
+        return 4
     
-    # Diğer Türk kanalları
-    if 'türk' in name or 'turk' in name:
-        return 5
-        
     # Azerbaycan kanalları
-    if 'azerbaycan' in name or 'azeri' in name or 'aztv' in name or 'az tv' in name or '(azerbaycan)' in name:
+    elif any(x in name or x in url for x in ['az tv', 'azerbaijan', 'azerbaycan', 'idman', 'ictimai', 'xezer', 'space tv az', 'cbc az', 'arb']):
+        return 5
+    
+    # Diğer kanallar
+    else:
         return 6
-            
-    # Diğer tüm kanallar
-    return 7
 
 def create_metadata(channels, valid_count):
     """Güncel metadata bilgisini JSON dosyasına yazar."""
@@ -2201,27 +2351,85 @@ def save_all_channel_pages():
     debug_dir = "debug_channels"
     os.makedirs(debug_dir, exist_ok=True)
     
-    # Tüm URL'leri topla
+    # Tüm URL'leri topla ve geçerli olanları bul
     channel_urls = get_all_channel_urls()
     
-    # Hatalı URL'ler için düzeltmeler
-    url_corrections = {
-        "cnn-turk-izle": "cnn-turk-canli-yayin",
-        "ntv-izle": "ntv-canli-yayin",
-        "haberturk-izle": "haberturk-canli-yayin"
-    }
+    # URL doğrulama ve düzeltme mekanizmasıyla, çalışmayan URL'leri düzelt
+    working_urls = []
     
-    processed_count = 0
+    # URL'lerin %10'unu test et (tüm listeyi test etmek çok uzun sürer)
+    sample_size = min(50, len(channel_urls))
+    sample_urls = random.sample(channel_urls, sample_size)
+    
+    logger.info(f"URL örneklemi test ediliyor: {sample_size} URL")
+    for url in sample_urls:
+        try:
+            # URL'yi test et
+            response = requests.head(url, headers={"User-Agent": USER_AGENT}, timeout=5)
+            if response.status_code < 400:
+                # URL çalışıyor, tüm listeye ekle
+                working_urls.append(url)
+                logger.info(f"URL çalışıyor: {url}")
+            else:
+                # URL çalışmıyor, düzeltmeye çalış
+                logger.warning(f"URL çalışmıyor ({response.status_code}): {url}")
+                
+                # Kanal adını çıkar ve alternatif URL formatlarını dene
+                try:
+                    channel_name = url.rstrip('/').split('/')[-1]
+                    base_name = channel_name
+                    
+                    # Yaygın ekleri çıkar
+                    for suffix in ['-canli', '-izle', '-yayin', '-hd', '-tv']:
+                        base_name = base_name.replace(suffix, '')
+                    
+                    # Alternatif formatları dene
+                    alt_formats = [
+                        f"{BASE_URL}{base_name}-canli-yayin",
+                        f"{BASE_URL}{base_name}-canli-izle",
+                        f"{BASE_URL}{base_name}-hd-izle",
+                        f"{BASE_URL}{base_name}-hd-canli-yayin",
+                        f"{BASE_URL}{base_name}-tv-hd-izle"
+                    ]
+                    
+                    found_working = False
+                    for alt_url in alt_formats:
+                        try:
+                            alt_response = requests.head(alt_url, headers={"User-Agent": USER_AGENT}, timeout=5)
+                            if alt_response.status_code < 400:
+                                working_urls.append(alt_url)
+                                logger.info(f"Alternatif URL çalışıyor: {alt_url}")
+                                found_working = True
+                                break
+                        except:
+                            continue
+                    
+                    if not found_working:
+                        # Hiçbir alternatif çalışmadıysa, orijinal URL'yi ekle
+                        working_urls.append(url)
+                except:
+                    # URL işlenemezse, orijinal URL'yi ekle
+                    working_urls.append(url)
+        except Exception as e:
+            # Test hatası, URL'yi olduğu gibi ekle
+            working_urls.append(url)
+            logger.warning(f"URL test hatası: {url} - {e}")
+    
+    # Diğer tüm URL'leri ekle
     for url in channel_urls:
+        if url not in sample_urls:
+            working_urls.append(url)
+    
+    # Benzersiz URL listesi oluştur
+    working_urls = list(set(working_urls))
+    
+    logger.info(f"Toplam {len(working_urls)} URL işlenecek")
+    
+    # Her URL için sayfayı indir ve kaydet
+    processed_count = 0
+    for url in working_urls:
         # Kanal adını URL'den çıkar
         channel_slug = url.rstrip('/').split('/')[-1]
-        
-        # Hatalı URL formatlarını düzelt
-        for wrong_format, correct_format in url_corrections.items():
-            if wrong_format in url:
-                url = url.replace(wrong_format, correct_format)
-                channel_slug = correct_format
-                logger.info(f"URL düzeltildi: {wrong_format} -> {correct_format}")
         
         logger.info(f"Kanal sayfası indiriliyor: {channel_slug}")
         
@@ -2284,6 +2492,8 @@ def save_all_channel_pages():
         time.sleep(2)
     
     logger.info(f"Toplam {processed_count} kanal sayfası başarıyla kaydedildi.")
+    
+    return working_urls
 
 def main():
     logger.info("Kanal çekme işlemi başlıyor...")
