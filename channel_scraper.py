@@ -20,7 +20,7 @@ OUTPUT_FILE = "kanallar.m3u"
 METADATA_FILE = "metadata.json"
 
 def get_all_channel_urls():
-    """Pagination ile tüm sayfaları gezerek tüm kanal URL'lerini toplar."""
+    """Site'deki tüm kanal URL'lerini toplar."""
     all_channel_urls = []
     
     headers = {
@@ -30,142 +30,98 @@ def get_all_channel_urls():
     }
     
     try:
-        # Site yapısını direk incelemek için ana sayfayı çekelim
+        # Doğrudan bilinen URL formatlarını ekle
+        known_channel_urls = [
+            # Doğrudan URL örnekleri
+            "https://www.canlitv.vin/now-tv-canli", 
+            "https://www.canlitv.vin/showtvcanli", 
+            "https://www.canlitv.vin/kanal-d-canli-yayin",
+            "https://www.canlitv.vin/trt1-canli",
+            "https://www.canlitv.vin/atv-canli",
+            "https://www.canlitv.vin/fox-tv-canli",
+            "https://www.canlitv.vin/star-tv-canli",
+            "https://www.canlitv.vin/tv8-canli",
+            "https://www.canlitv.vin/trt-haber-canli",
+            "https://www.canlitv.vin/haberturk-canli",
+            "https://www.canlitv.vin/cnn-turk-canli",
+            "https://www.canlitv.vin/trt-spor-canli",
+            "https://www.canlitv.vin/a-spor-canli",
+            "https://www.canlitv.vin/aspor-canli",
+            "https://www.canlitv.vin/trt-belgesel-canli",
+            "https://www.canlitv.vin/trt-cocuk-canli",
+            "https://www.canlitv.vin/kanal-7-canli",
+            "https://www.canlitv.vin/tv8-5-canli",
+            "https://www.canlitv.vin/trt-muzik-canli",
+            "https://www.canlitv.vin/idman-tv-canli",
+            "https://www.canlitv.vin/az-tv-canli",
+            "https://www.canlitv.vin/xezer-tv-canli",
+            "https://www.canlitv.vin/ictimai-tv-canli",
+            "https://www.canlitv.vin/trt-avaz-canli",
+            "https://www.canlitv.vin/trt-kurdi-canli"
+        ]
+        all_channel_urls.extend(known_channel_urls)
+        logger.info(f"Bilinen kanal URL'leri eklendi: {len(known_channel_urls)}")
+        
+        # Ana sayfayı incele
         logger.info(f"Ana sayfa inceleniyor")
         response = requests.get(BASE_URL, headers=headers, timeout=15)
         
         if response.status_code != 200:
             logger.error(f"Ana sayfa yüklenirken hata: HTTP {response.status_code}")
-            return use_fallback_method()
+            return all_channel_urls if all_channel_urls else use_fallback_method()
         
-        # Debug: HTML içeriğini kaydet
+        # HTML içeriğini kaydet
         with open('ana_sayfa.html', 'w', encoding='utf-8') as f:
             f.write(response.text)
             logger.info("Ana sayfa HTML içeriği kaydedildi")
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 1. Ana menüden kanal kategorilerini bul
-        menu_items = soup.select('ul.menu > li > a')
-        category_urls = []
+        # Sayfadaki bütün kanal linklerini bul 
+        all_links = soup.find_all('a', href=True)
         
-        for item in menu_items:
-            href = item.get('href')
-            if href and ('kategori' in href or 'canli-' in href or 'kanallar' in href):
-                if not href.startswith('http'):
-                    href = urllib.parse.urljoin(BASE_URL, href)
-                category_urls.append(href)
-                logger.info(f"Kategori bulundu: {href}")
-        
-        # 2. Ana sayfadaki popüler/öne çıkan kanal kartlarını bul
-        card_links = soup.select('div.card a')
-        for link in card_links:
+        for link in all_links:
             href = link.get('href')
-            if href and ('-izle' in href or 'canli-' in href):
-                if not href.startswith('http'):
+            # Kanal linki olabilecek formatları kontrol et
+            if href and (('canli' in href) or ('izle' in href) or ('yayin' in href)):
+                # Çeşitli formatları deniyoruz
+                if href.startswith('/'):
+                    href = BASE_URL + href[1:]
+                elif not href.startswith('http'):
                     href = urllib.parse.urljoin(BASE_URL, href)
+                
                 all_channel_urls.append(href)
-                logger.info(f"Ana sayfada kanal bulundu: {href}")
+                logger.info(f"Ana sayfadan kanal bulundu: {href}")
         
-        # 3. Özel olarak direk kanal listesi sayfalarını kontrol et
-        kanallar_url = urllib.parse.urljoin(BASE_URL, "kanallar")
-        logger.info(f"Tüm kanallar sayfası inceleniyor: {kanallar_url}")
+        # Yan menüdeki kanal listesini özel olarak kontrol et (kanal listesi sayfada yan tarafta listelenmiş)
+        channel_list_elem = soup.select_one('div.kanallar-listesi') or soup.select_one('ul.kanallar') or soup.select_one('ul.menu')
         
-        try:
-            kanallar_response = requests.get(kanallar_url, headers=headers, timeout=15)
-            if kanallar_response.status_code == 200:
-                kanallar_soup = BeautifulSoup(kanallar_response.text, 'html.parser')
+        if channel_list_elem:
+            channel_links = channel_list_elem.find_all('a', href=True)
+            logger.info(f"Kanal listesinde {len(channel_links)} link bulundu")
+            
+            for link in channel_links:
+                href = link.get('href')
                 
-                # Kanal liste sayfasını debug için kaydet
-                with open('kanallar_sayfasi.html', 'w', encoding='utf-8') as f:
-                    f.write(kanallar_response.text)
-                
-                # Kanal kartlarını bul - farklı sınıf/id'ler deneyerek
-                card_patterns = [
-                    'div.card a', 'div.channels a', 'div.tv-card a', 'div.kanal a',
-                    'li.channel a', 'div.card-body a', 'div.card-title a',
-                    'a.tv-link', 'a.channel-link', 'a.kanal-link'
-                ]
-                
-                for pattern in card_patterns:
-                    links = kanallar_soup.select(pattern)
-                    if links:
-                        logger.info(f"'{pattern}' seçicisiyle {len(links)} kanal bulundu")
-                        
-                        for link in links:
-                            href = link.get('href')
-                            if href and ('-izle' in href or 'canli-' in href or 'tv-' in href):
-                                if not href.startswith('http'):
-                                    href = urllib.parse.urljoin(BASE_URL, href)
-                                all_channel_urls.append(href)
-                                logger.info(f"Kanal URL bulundu: {href}")
-                
-                # Herhangi bir şekilde link bulunamadıysa tüm a etiketlerini tara
-                if not all_channel_urls:
-                    logger.info("Özel seçicilerle kanal bulunamadı, tüm linkler taranıyor")
-                    all_links = kanallar_soup.find_all('a', href=True)
+                if href:
+                    # Tam URL oluştur
+                    if not href.startswith('http'):
+                        href = urllib.parse.urljoin(BASE_URL, href)
                     
-                    for link in all_links:
-                        href = link.get('href')
-                        # Kanal URL'si olabilecek linkleri filtrele
-                        if href and ('-izle' in href or 'canli-' in href or 'tv-' in href) and not '#' in href and not 'javascript:' in href:
-                            if not href.startswith('http'):
-                                href = urllib.parse.urljoin(BASE_URL, href)
-                            all_channel_urls.append(href)
-                            logger.info(f"Genel tarama ile kanal URL bulundu: {href}")
-            else:
-                logger.warning(f"Kanallar sayfası alınamadı: HTTP {kanallar_response.status_code}")
-                
-        except Exception as e:
-            logger.error(f"Kanallar sayfası işlenirken hata: {str(e)}")
-        
-        # 4. Her kategori sayfasını ziyaret et ve kanal linklerini topla
-        for category_url in category_urls:
-            try:
-                logger.info(f"Kategori inceleniyor: {category_url}")
-                cat_response = requests.get(category_url, headers=headers, timeout=15)
-                
-                if cat_response.status_code != 200:
-                    logger.warning(f"Kategori sayfası alınamadı: {category_url}")
-                    continue
-                
-                cat_soup = BeautifulSoup(cat_response.text, 'html.parser')
-                
-                # Tüm muhtemel kanal kartı içeren etiketleri dene
-                for selector in card_patterns:
-                    cat_links = cat_soup.select(selector)
-                    for link in cat_links:
-                        href = link.get('href')
-                        if href and ('-izle' in href or 'canli-' in href or 'tv-' in href):
-                            if not href.startswith('http'):
-                                href = urllib.parse.urljoin(BASE_URL, href)
-                            all_channel_urls.append(href)
-                            logger.info(f"Kategori sayfasında kanal bulundu: {href}")
-                
-                # Herhangi bir şekilde link bulunamadıysa tüm a etiketlerini tara
-                if not all_channel_urls:
-                    all_links = cat_soup.find_all('a', href=True)
-                    for link in all_links:
-                        href = link.get('href')
-                        # Kanal URL'si olabilecek linkleri filtrele
-                        if href and ('-izle' in href or 'canli-' in href or 'tv-' in href) and not '#' in href and not 'javascript:' in href:
-                            if not href.startswith('http'):
-                                href = urllib.parse.urljoin(BASE_URL, href)
-                            all_channel_urls.append(href)
-                            logger.info(f"Kategori genel taramayla kanal bulundu: {href}")
-                            
-            except Exception as e:
-                logger.error(f"Kategori sayfası işlenirken hata: {category_url} - {str(e)}")
-        
-        # Eğer hiç URL bulunamadıysa, alternatif metod kullanılacak
-        if not all_channel_urls:
-            logger.warning("Hiç kanal URL'si bulunamadı, alternatif metoda geçiliyor...")
-            return use_fallback_method()
+                    # Kanal URL'si mi kontrol et
+                    if 'canli' in href.lower() or 'izle' in href.lower() or 'yayin' in href.lower():
+                        all_channel_urls.append(href)
+                        logger.info(f"Kanal menüsünden URL bulundu: {href}")
         
         # URL'leri benzersiz hale getir
         all_channel_urls = list(set(all_channel_urls))
         logger.info(f"Toplam {len(all_channel_urls)} benzersiz kanal URL'si bulundu")
         
+        # Eğer hiç URL bulunamadıysa, alternatif metod kullanılacak
+        if not all_channel_urls:
+            logger.warning("Hiç kanal URL'si bulunamadı, alternatif metoda geçiliyor...")
+            return use_fallback_method()
+            
         return all_channel_urls
     
     except Exception as e:
@@ -355,150 +311,7 @@ def get_channels():
         return []
 
 def extract_m3u_url(channel_info):
-    """Channel için m3u veya m3u8 URL döndürür"""
-    channel_name_lower = channel_info['name'].lower()
-    
-    # ------------------- BİLİNEN KANALLAR LİSTESİ -------------------
-    # Bu listeyi güncelleyerek tüm kanalların doğrudan m3u linklerini ekleyebilirsiniz
-    known_channels = {
-        # TRT Kanalları
-        'trt 1': "https://tv-trt1.medya.trt.com.tr/master.m3u8",
-        'trt1': "https://tv-trt1.medya.trt.com.tr/master.m3u8",
-        'trt 2': "https://tv-trt2.medya.trt.com.tr/master.m3u8",
-        'trt2': "https://tv-trt2.medya.trt.com.tr/master.m3u8",
-        'trt spor': "https://tv-trtspor1.medya.trt.com.tr/master.m3u8",
-        'trt haber': "https://tv-trthaber.medya.trt.com.tr/master.m3u8",
-        'trt belgesel': "https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8",
-        'trt çocuk': "https://tv-trtcocuk.medya.trt.com.tr/master.m3u8",
-        'trt müzik': "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8",
-        'trt avaz': "https://tv-trtavaz.medya.trt.com.tr/master.m3u8",
-        'trt kurdî': "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8",
-        'trt kurdi': "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8",
-        'trt kurd': "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8",
-        'trt türk': "https://tv-trtturk.medya.trt.com.tr/master.m3u8",
-        'trt turk': "https://tv-trtturk.medya.trt.com.tr/master.m3u8",
-        'trt arabi': "https://tv-trtarabi.medya.trt.com.tr/master.m3u8",
-        'trt world': "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
-        'trt spor yıldız': "https://tv-trtspor2.medya.trt.com.tr/master.m3u8",
-        'trt spor yildiz': "https://tv-trtspor2.medya.trt.com.tr/master.m3u8",
-        'trt eba ilkokul': "https://tv-e-okul00.medya.trt.com.tr/master.m3u8",
-        'trt eba ortaokul': "https://tv-e-okul01.medya.trt.com.tr/master.m3u8",
-        'trt eba lise': "https://tv-e-okul02.medya.trt.com.tr/master.m3u8",
-        
-        # Diğer Bilinen Türk Kanalları
-        'kanal d': "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web&ce=3",
-        'kanald': "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web&ce=3",
-        'atv': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/8/index.m3u8",
-        'show tv': "https://ciner-live.daioncdn.net/showtv/showtv.m3u8",
-        'showtv': "https://ciner-live.daioncdn.net/showtv/showtv.m3u8",
-        'star tv': "https://dogus-live.daioncdn.net/startv/startv.m3u8",
-        'startv': "https://dogus-live.daioncdn.net/startv/startv.m3u8",
-        'tv8': "https://tv8-live.daioncdn.net/tv8/tv8.m3u8",
-        'tv 8': "https://tv8-live.daioncdn.net/tv8/tv8.m3u8",
-        'fox tv': "https://foxtv.blutv.com/blutv_foxtv_live/live.m3u8",
-        'foxtv': "https://foxtv.blutv.com/blutv_foxtv_live/live.m3u8",
-        'fox': "https://foxtv.blutv.com/blutv_foxtv_live/live.m3u8",
-        'kanal 7': "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8",
-        'kanal7': "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8",
-        'teve2': "https://demiroren.daioncdn.net/teve2/teve2.m3u8?app=teve2_web&ce=3",
-        'teve 2': "https://demiroren.daioncdn.net/teve2/teve2.m3u8?app=teve2_web&ce=3",
-        'beyaz tv': "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8",
-        'beyaztv': "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8",
-        'a2': "https://stream2.filbox.com.tr/live/7d6b0f92687fa8e886368f640271243b/10/index.m3u8",
-        
-        # Spor Kanalları
-        'tv8.5': "https://tv85-live.daioncdn.net/tv85/tv85.m3u8",
-        'tv 8.5': "https://tv85-live.daioncdn.net/tv85/tv85.m3u8",
-        'gs tv': "https://owifavo5.rocketcdn.com/gstv/gstv.smil/master.m3u8",
-        'gstv': "https://owifavo5.rocketcdn.com/gstv/gstv.smil/master.m3u8",
-        'fb tv': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/66/index.m3u8",
-        'fbtv': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/66/index.m3u8",
-        'bjk tv': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/5/index.m3u8",
-        'bjktv': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/5/index.m3u8",
-        'a spor': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/95/index.m3u8",
-        'aspor': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/95/index.m3u8",
-        'sports tv': "https://live.sportstv.com.tr/hls/low/sportstv.m3u8",
-        'sportstv': "https://live.sportstv.com.tr/hls/low/sportstv.m3u8",
-        'tivibu spor': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/67/index.m3u8",
-        
-        # Haber Kanalları
-        'ntv': "https://dogus-live.daioncdn.net/ntv/ntv.m3u8",
-        'cnn türk': "https://live.duhnet.tv/S2/HLS_LIVE/cnnturknp/playlist.m3u8",
-        'cnn turk': "https://live.duhnet.tv/S2/HLS_LIVE/cnnturknp/playlist.m3u8",
-        'cnnturk': "https://live.duhnet.tv/S2/HLS_LIVE/cnnturknp/playlist.m3u8",
-        'haber türk': "https://ciner-live.daioncdn.net/haberturktv/haberturktv.m3u8",
-        'haberturk': "https://ciner-live.daioncdn.net/haberturktv/haberturktv.m3u8",
-        'haberturk tv': "https://ciner-live.daioncdn.net/haberturktv/haberturktv.m3u8",
-        'halk tv': "https://halktv.daioncdn.net/halktv/halktv.m3u8?app=halktv_web&ce=3",
-        'halktv': "https://halktv.daioncdn.net/halktv/halktv.m3u8?app=halktv_web&ce=3",
-        'tgrt haber': "https://tgrt-live.daioncdn.net/tgrthaber/tgrthaber.m3u8",
-        'tgrthaber': "https://tgrt-live.daioncdn.net/tgrthaber/tgrthaber.m3u8",
-        'bloomberg ht': "https://bloomberght-live.daioncdn.net/bloomberght/bloomberght.m3u8",
-        'bloomberght': "https://bloomberght-live.daioncdn.net/bloomberght/bloomberght.m3u8",
-        'tv 100': "https://tv100.blutv.com/blutv_tv100_live/live.m3u8",
-        'tv100': "https://tv100.blutv.com/blutv_tv100_live/live.m3u8",
-        '24 tv': "https://turkmedya-live.ercdn.net/tv24/tv24.m3u8",
-        '24tv': "https://turkmedya-live.ercdn.net/tv24/tv24.m3u8",
-        'ulusal kanal': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/77/index.m3u8",
-        'a haber': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/27/index.m3u8",
-        'ahaber': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/27/index.m3u8",
-        
-        # Azerbaycan Kanalları
-        'aztv': "http://az.digicom.az:8080/play/a01v/index.m3u8",
-        'az tv': "http://az.digicom.az:8080/play/a01v/index.m3u8",
-        'idman tv': "http://az.digicom.az:8080/play/a01q/index.m3u8",
-        'space tv': "http://az.digicom.az:8080/play/a01o/index.m3u8",
-        'cbc az': "http://az.digicom.az:8080/play/a01k/index.m3u8",
-        'cbc az tv': "http://az.digicom.az:8080/play/a01k/index.m3u8",
-        'xezer tv': "http://az.digicom.az:8080/play/a01y/index.m3u8",
-        'ictimai tv': "http://az.digicom.az:8080/play/a025/index.m3u8",
-        'atv azad': "http://az.digicom.az:8080/play/a01p/index.m3u8",
-        'atv azad tv': "http://az.digicom.az:8080/play/a01p/index.m3u8",
-        'arb tv': "http://az.digicom.az:8080/play/a01v/index.m3u8",
-        'arb 24 tv': "http://85.132.81.184:8080/arb24/live1/index.m3u8",
-        
-        # Müzik Kanalları
-        'kral tv': "https://dogus-live.daioncdn.net/kraltv/kraltv.m3u8",
-        'kraltv': "https://dogus-live.daioncdn.net/kraltv/kraltv.m3u8",
-        'kral pop': "https://dogus-live.daioncdn.net/kralpoptv/kralpoptv.m3u8",
-        'kralpop': "https://dogus-live.daioncdn.net/kralpoptv/kralpoptv.m3u8",
-        'power türk': "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlist.m3u8",
-        'power turk': "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlist.m3u8",
-        'powerturk': "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlist.m3u8",
-        'power tv': "https://livetv.powerapp.com.tr/powerTV/powerhd.smil/playlist.m3u8",
-        'powertv': "https://livetv.powerapp.com.tr/powerTV/powerhd.smil/playlist.m3u8",
-        'number one': "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e17cd6360b_1/playlist.m3u8",
-        'numberone': "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e17cd6360b_1/playlist.m3u8",
-        'number one türk': "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8",
-        'numberone türk': "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8",
-        'dream türk': "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8",
-        'dream turk': "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8",
-        'dreamturk': "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8",
-        'tatlıses tv': "https://live.artidijitalmedya.com/artidijital_tatlisestv/tatlisestv/playlist.m3u8",
-        'tatlises tv': "https://live.artidijitalmedya.com/artidijital_tatlisestv/tatlisestv/playlist.m3u8",
-        
-        # Çocuk Kanalları
-        'minika go': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/51/index.m3u8",
-        'minikago': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/51/index.m3u8",
-        'minika çocuk': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/52/index.m3u8",
-        'minika cocuk': "https://stream2.filbox.com.tr/live/08d07e8f6f186381322a5fd7c8941558/52/index.m3u8",
-        'cartoon network': "https://cartoonnetwork.blutv.com/blutv_cartoonnetwork/live.m3u8",
-    }
-    
-    # Kanal ismi bilinen listede mi kontrol et
-    if channel_name_lower in known_channels:
-        m3u_url = known_channels[channel_name_lower]
-        logger.info(f"Bilinen kanal URL'si kullanılıyor: {channel_info['name']} -> {m3u_url}")
-        return m3u_url
-    
-    # Benzer adlarda arama yap
-    for key, value in known_channels.items():
-        # Kanal ismi içeriyorsa
-        if key in channel_name_lower or channel_name_lower in key:
-            logger.info(f"Benzer isimli bilinen kanal URL'si kullanılıyor: {channel_info['name']} -> {value}")
-            return value
-    
-    # Web sayfasından çekmeye çalış - Eğer bu noktada hala bir URL bulunmadıysa
+    """Kanal sayfasından m3u/m3u8 URL'sini dinamik olarak çıkarır"""
     try:
         headers = {
             'User-Agent': USER_AGENT,
@@ -509,7 +322,7 @@ def extract_m3u_url(channel_info):
         logger.info(f"İşleniyor: {channel_info['name']} - {channel_info['url']}")
         
         try:
-            response = requests.get(channel_info['url'], headers=headers, timeout=10)
+            response = requests.get(channel_info['url'], headers=headers, timeout=15)
             response.raise_for_status()
             html_content = response.text
             
@@ -523,54 +336,369 @@ def extract_m3u_url(channel_info):
             logger.error(f"Sayfa alınırken hata: {channel_info['url']} - {str(e)}")
             return None
         
-        # HTML içeriğinden URL bulma kodunu çalıştır
+        # HTML içeriğini analiz et
         soup = BeautifulSoup(html_content, 'html.parser')
         
-        # Video player container'ını bul
+        # 1. kanallar.php iframe'ini bul - canlitv.vin'in özel formatı
+        iframes = soup.find_all('iframe')
+        for iframe in iframes:
+            iframe_src = iframe.get('src')
+            if not iframe_src:
+                continue
+                
+            # kanallar.php iframe'i önemli bir ipucu
+            if 'kanallar.php' in iframe_src:
+                logger.info(f"kanallar.php iframe bulundu: {iframe_src}")
+                
+                # kanallar.php parametrelerini çıkar
+                kanal_param = None
+                if '?' in iframe_src:
+                    query_part = iframe_src.split('?')[1]
+                    params = query_part.split('&')
+                    for param in params:
+                        if param.startswith('kanal='):
+                            kanal_param = param.split('=')[1]
+                            break
+                
+                if kanal_param:
+                    logger.info(f"Kanal parametresi bulundu: {kanal_param}")
+                    
+                    # iframe URL'sini normalize et
+                    iframe_url = iframe_src
+                    if not iframe_url.startswith('http'):
+                        if iframe_url.startswith('//'):
+                            iframe_url = 'https:' + iframe_url
+                        else:
+                            iframe_url = urllib.parse.urljoin(BASE_URL, iframe_url)
+                    
+                    # iframe içeriğini getir
+                    try:
+                        iframe_headers = headers.copy()
+                        iframe_headers['Referer'] = channel_info['url']
+                        
+                        iframe_response = requests.get(iframe_url, headers=iframe_headers, timeout=10)
+                        iframe_content = iframe_response.text
+                        
+                        # iframe içeriğini debug için kaydet
+                        iframe_debug_file = f"debug_iframe_{kanal_param}.html"
+                        with open(iframe_debug_file, 'w', encoding='utf-8') as f:
+                            f.write(iframe_content)
+                            logger.info(f"iframe içeriği kaydedildi: {iframe_debug_file}")
+                        
+                        # iframe içinde m3u URL'lerini ara
+                        iframe_soup = BeautifulSoup(iframe_content, 'html.parser')
+                        
+                        # Video elementleri kontrol et
+                        video_tags = iframe_soup.find_all('video')
+                        for video in video_tags:
+                            # video src attribute
+                            video_src = video.get('src')
+                            if video_src and ('.m3u' in video_src or '.m3u8' in video_src):
+                                if not video_src.startswith('http'):
+                                    video_src = urllib.parse.urljoin(iframe_url, video_src)
+                                logger.info(f"Video tag'i içinde m3u bulundu: {video_src}")
+                                return video_src
+                            
+                            # source elementleri kontrol et
+                            source_tags = video.find_all('source')
+                            for source in source_tags:
+                                source_src = source.get('src')
+                                if source_src and ('.m3u' in source_src or '.m3u8' in source_src):
+                                    if not source_src.startswith('http'):
+                                        source_src = urllib.parse.urljoin(iframe_url, source_src)
+                                    logger.info(f"Source tag'i içinde m3u bulundu: {source_src}")
+                                    return source_src
+                        
+                        # Scriptlerde değişkenler ara
+                        script_tags = iframe_soup.find_all('script')
+                        for script in script_tags:
+                            script_content = script.string
+                            if script_content:
+                                m3u_url = find_m3u_in_content(script_content)
+                                if m3u_url:
+                                    # URL'yi normalize et
+                                    if not m3u_url.startswith('http'):
+                                        if m3u_url.startswith('//'):
+                                            m3u_url = 'https:' + m3u_url
+                                        else:
+                                            m3u_url = urllib.parse.urljoin(iframe_url, m3u_url)
+                                    logger.info(f"iframe script içinde m3u bulundu: {m3u_url}")
+                                    return m3u_url
+                        
+                        # iframe içeriğinde m3u URL'leri ara
+                        m3u_url = find_m3u_in_content(iframe_content)
+                        if m3u_url:
+                            # URL'yi normalize et
+                            if not m3u_url.startswith('http'):
+                                if m3u_url.startswith('//'):
+                                    m3u_url = 'https:' + m3u_url
+                                else:
+                                    m3u_url = urllib.parse.urljoin(iframe_url, m3u_url)
+                            logger.info(f"iframe içeriğinde m3u bulundu: {m3u_url}")
+                            return m3u_url
+                    
+                    except Exception as iframe_error:
+                        logger.warning(f"iframe içeriği incelenirken hata: {iframe_error}")
+            
+            # İframe içeriği direk m3u formatındaysa
+            elif iframe_src.endswith('.m3u') or iframe_src.endswith('.m3u8') or '.m3u8' in iframe_src:
+                # URL'yi normalize et
+                if not iframe_src.startswith('http'):
+                    if iframe_src.startswith('//'):
+                        iframe_src = 'https:' + iframe_src
+                    else:
+                        iframe_src = urllib.parse.urljoin(channel_info['url'], iframe_src)
+                logger.info(f"İframe src içinde doğrudan m3u URL'si bulundu: {iframe_src}")
+                return iframe_src
+            
+            # Diğer tüm iframe'leri de kontrol edelim
+            else:
+                # iframe URL'sini normalize et
+                full_iframe_src = iframe_src
+                if not full_iframe_src.startswith('http'):
+                    if full_iframe_src.startswith('//'):
+                        full_iframe_src = 'https:' + full_iframe_src
+                    else:
+                        full_iframe_src = urllib.parse.urljoin(channel_info['url'], full_iframe_src)
+                
+                try:
+                    # iframe içeriğini al
+                    iframe_headers = headers.copy()
+                    iframe_headers['Referer'] = channel_info['url']
+                    
+                    iframe_response = requests.get(full_iframe_src, headers=iframe_headers, timeout=10)
+                    if iframe_response.status_code == 200:
+                        iframe_content = iframe_response.text
+                        
+                        # iframe içinde m3u URL'leri ara
+                        m3u_url = find_m3u_in_content(iframe_content)
+                        if m3u_url:
+                            # URL'yi normalize et
+                            if not m3u_url.startswith('http'):
+                                if m3u_url.startswith('//'):
+                                    m3u_url = 'https:' + m3u_url
+                                else:
+                                    m3u_url = urllib.parse.urljoin(full_iframe_src, m3u_url)
+                            logger.info(f"Normal iframe içinde m3u bulundu: {m3u_url}")
+                            return m3u_url
+                except Exception as normal_iframe_error:
+                    logger.warning(f"Normal iframe işlenirken hata: {normal_iframe_error}")
+        
+        # 2. Video player elementlerini bul
         player_selectors = [
             '#video-player', '#player', '.video-player', '.player', '#tv-player', 
             '.tv-player', '#videoContainer', '.videoContainer', '#playerContainer', 
-            '.playerContainer', '#livePlayer', '.livePlayer', '#video', '.video'
+            '.playerContainer', '#livePlayer', '.livePlayer', '#video', '.video',
+            '#player_div', '.player_div', '#playerElement', '.playerElement',
+            '#jwplayer', '.jwplayer', '.flowplayer', '#flowplayer'
         ]
         
-        player_element = None
         for selector in player_selectors:
-            found = soup.select_one(selector)
-            if found:
-                player_element = found
+            player_element = soup.select_one(selector)
+            if player_element:
                 logger.info(f"Player elementi bulundu: {selector}")
-                break
                 
-        # İframe'leri kontrol et
-        if player_element:
-            iframe = player_element.find('iframe')
-            if iframe and iframe.get('src'):
-                iframe_src = iframe.get('src')
-                if not iframe_src.startswith('http'):
-                    iframe_src = f"https:{iframe_src}" if iframe_src.startswith('//') else f"https://{iframe_src}"
+                # Player içinde iframe var mı?
+                player_iframe = player_element.find('iframe')
+                if player_iframe and player_iframe.get('src'):
+                    iframe_src = player_iframe.get('src')
+                    # URL'yi normalize et
+                    if not iframe_src.startswith('http'):
+                        if iframe_src.startswith('//'):
+                            iframe_src = 'https:' + iframe_src
+                        else:
+                            iframe_src = urllib.parse.urljoin(channel_info['url'], iframe_src)
+                    
+                    logger.info(f"Player içinde iframe bulundu: {iframe_src}")
+                    
+                    # m3u8 linki içeriyor mu kontrol et
+                    if '.m3u' in iframe_src or '.m3u8' in iframe_src:
+                        logger.info(f"Player iframe src içinde m3u linki bulundu: {iframe_src}")
+                        return iframe_src
+                    
+                    # iframe içeriğini al
+                    try:
+                        iframe_headers = headers.copy()
+                        iframe_headers['Referer'] = channel_info['url']
+                        
+                        iframe_response = requests.get(iframe_src, headers=iframe_headers, timeout=10)
+                        if iframe_response.status_code == 200:
+                            iframe_content = iframe_response.text
+                            
+                            # iframe içinde m3u URL'leri ara
+                            m3u_url = find_m3u_in_content(iframe_content)
+                            if m3u_url:
+                                # URL'yi normalize et
+                                if not m3u_url.startswith('http'):
+                                    if m3u_url.startswith('//'):
+                                        m3u_url = 'https:' + m3u_url
+                                    else:
+                                        m3u_url = urllib.parse.urljoin(iframe_src, m3u_url)
+                                logger.info(f"Player iframe içinde m3u bulundu: {m3u_url}")
+                                return m3u_url
+                    except Exception as player_iframe_error:
+                        logger.warning(f"Player iframe işlenirken hata: {player_iframe_error}")
                 
-                logger.info(f"İframe URL bulundu: {iframe_src}")
+                # Player içinde video veya source elementleri var mı?
+                video_tag = player_element.find('video')
+                if video_tag:
+                    # Video src attribute
+                    video_src = video_tag.get('src')
+                    if video_src and ('.m3u' in video_src or '.m3u8' in video_src):
+                        if not video_src.startswith('http'):
+                            video_src = urllib.parse.urljoin(channel_info['url'], video_src)
+                        logger.info(f"Player içindeki video tag'i içinde m3u bulundu: {video_src}")
+                        return video_src
+                    
+                    # Source elementleri kontrol et
+                    source_tags = video_tag.find_all('source')
+                    for source in source_tags:
+                        source_src = source.get('src')
+                        if source_src and ('.m3u' in source_src or '.m3u8' in source_src):
+                            if not source_src.startswith('http'):
+                                source_src = urllib.parse.urljoin(channel_info['url'], source_src)
+                            logger.info(f"Player içindeki source tag'i içinde m3u bulundu: {source_src}")
+                            return source_src
                 
-                try:
-                    iframe_response = requests.get(iframe_src, headers=headers, timeout=10)
-                    if iframe_response.status_code == 200:
-                        m3u_url = find_m3u_in_content(iframe_response.text)
-                        if m3u_url:
-                            return m3u_url
-                except Exception as e:
-                    logger.warning(f"İframe içeriği alınırken hata: {e}")
+                # Data attribute'ları kontrol et
+                for data_attr in ['data-source', 'data-url', 'data-stream', 'data-hls', 'data-src']:
+                    attr_value = player_element.get(data_attr)
+                    if attr_value and ('.m3u' in attr_value or '.m3u8' in attr_value):
+                        if not attr_value.startswith('http'):
+                            attr_value = urllib.parse.urljoin(channel_info['url'], attr_value)
+                        logger.info(f"Player data attribute içinde m3u bulundu: {attr_value}")
+                        return attr_value
         
-        # Son çare olarak m3u URL'si ara
+        # 3. Sayfa içindeki tüm video elementlerini kontrol et
+        video_tags = soup.find_all('video')
+        for video in video_tags:
+            # Video src attribute
+            video_src = video.get('src')
+            if video_src and ('.m3u' in video_src or '.m3u8' in video_src):
+                if not video_src.startswith('http'):
+                    video_src = urllib.parse.urljoin(channel_info['url'], video_src)
+                logger.info(f"Video tag'i içinde m3u bulundu: {video_src}")
+                return video_src
+            
+            # Source elementleri kontrol et
+            source_tags = video.find_all('source')
+            for source in source_tags:
+                source_src = source.get('src')
+                if source_src and ('.m3u' in source_src or '.m3u8' in source_src):
+                    if not source_src.startswith('http'):
+                        source_src = urllib.parse.urljoin(channel_info['url'], source_src)
+                    logger.info(f"Source tag'i içinde m3u bulundu: {source_src}")
+                    return source_src
+        
+        # 4. Sayfa içindeki script elementlerini kontrol et
+        script_tags = soup.find_all('script')
+        for script in script_tags:
+            script_content = script.string
+            if script_content:
+                m3u_url = find_m3u_in_content(script_content)
+                if m3u_url:
+                    # URL'yi normalize et
+                    if not m3u_url.startswith('http'):
+                        if m3u_url.startswith('//'):
+                            m3u_url = 'https:' + m3u_url
+                        else:
+                            m3u_url = urllib.parse.urljoin(channel_info['url'], m3u_url)
+                    logger.info(f"Script içinde m3u bulundu: {m3u_url}")
+                    return m3u_url
+        
+        # 5. Sayfa içinde m3u URL'leri ara
         m3u_url = find_m3u_in_content(html_content)
         if m3u_url:
+            # URL'yi normalize et
+            if not m3u_url.startswith('http'):
+                if m3u_url.startswith('//'):
+                    m3u_url = 'https:' + m3u_url
+                else:
+                    m3u_url = urllib.parse.urljoin(channel_info['url'], m3u_url)
+            logger.info(f"Sayfa içeriğinde m3u bulundu: {m3u_url}")
             return m3u_url
         
-        # M3U bulunamadı, null dön
+        # 6. Son çare: yt-dlp veya selenium kullan
+        try:
+            yt_dlp_url = extract_with_ytdlp(channel_info['url'])
+            if yt_dlp_url:
+                logger.info(f"yt-dlp ile m3u bulundu: {yt_dlp_url}")
+                return yt_dlp_url
+        except Exception as yt_dlp_error:
+            logger.warning(f"yt-dlp ile çıkarma hatası: {str(yt_dlp_error)}")
+        
+        try:
+            selenium_url = extract_with_selenium(channel_info['url'])
+            if selenium_url:
+                logger.info(f"Selenium ile m3u bulundu: {selenium_url}")
+                return selenium_url
+        except Exception as selenium_error:
+            logger.warning(f"Selenium ile çıkarma hatası: {str(selenium_error)}")
+        
+        # M3U bulunamadı
         logger.warning(f"M3U URL bulunamadı: {channel_info['name']}")
         return None
         
     except Exception as e:
-        logger.error(f"M3U URL çıkarılırken hata oluştu ({channel_info['url']}): {e}")
+        logger.error(f"M3U URL çıkarılırken genel hata: {str(e)}")
+        return None
+
+def extract_with_ytdlp(url):
+    """yt-dlp kullanarak m3u8 linkini çıkarır"""
+    try:
+        # yt-dlp'nin kurulu olup olmadığını kontrol et
+        try:
+            import yt_dlp
+        except ImportError:
+            logger.warning("yt-dlp paketi bulunamadı, otomatik kurmayı deniyorum...")
+            import subprocess
+            import sys
+            
+            # pip kullanarak yt-dlp'yi yüklemeyi dene
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"], 
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            import yt_dlp
+            logger.info("yt-dlp paketi başarıyla kuruldu")
+        
+        logger.info(f"yt-dlp ile çıkarma deneniyor: {url}")
+        
+        # yt-dlp options
+        ydl_opts = {
+            'format': 'best',
+            'quiet': True,
+            'no_warnings': True,
+            'extractaudio': False,
+            'skip_download': True,
+            'external_downloader_args': ['--inet4-only'],
+            'socket_timeout': 10,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if info.get('url') and ('.m3u' in info.get('url') or '.m3u8' in info.get('url')):
+                return info.get('url')
+            elif info.get('formats'):
+                for fmt in info.get('formats'):
+                    if fmt.get('url') and ('.m3u' in fmt.get('url') or '.m3u8' in fmt.get('url')):
+                        return fmt.get('url')
+            
+            # En iyi formatı seçerek dön
+            if info.get('formats'):
+                best_format = None
+                for fmt in info.get('formats'):
+                    # HLS veya DASH formatlarını tercih et
+                    if fmt.get('protocol') in ['m3u8', 'm3u8_native', 'http_dash_segments']:
+                        if not best_format or fmt.get('quality', 0) > best_format.get('quality', 0):
+                            best_format = fmt
+                
+                if best_format and best_format.get('url'):
+                    return best_format.get('url')
+        
+        logger.warning(f"yt-dlp ile URL bulunamadı: {url}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"yt-dlp ile çıkarma hatası: {str(e)}")
         return None
 
 def find_m3u_in_content(content):
@@ -622,6 +750,218 @@ def find_m3u_in_content(content):
                     return m3u_url
     
     return None
+
+def extract_with_selenium(url):
+    """Selenium ile JavaScript çalıştırarak m3u8 linkini çıkarır"""
+    try:
+        # Selenium'un kurulu olup olmadığını kontrol et
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+        except ImportError:
+            logger.warning("Selenium paketleri bulunamadı, otomatik kurmayı deniyorum...")
+            import subprocess
+            import sys
+            
+            # Pip ile gerekli paketleri yükle
+            packages = ["selenium", "webdriver-manager"]
+            for package in packages:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package], 
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            from webdriver_manager.chrome import ChromeDriverManager
+            logger.info("Selenium paketleri başarıyla kuruldu")
+        
+        # WebDriver Manager ile Chrome Driver'ı otomatik kur
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            chromedriver_path = ChromeDriverManager().install()
+        except Exception as e:
+            logger.warning(f"Chrome Driver otomatik kurulumu hatası: {e}")
+            # Sistem PATH'inde ChromeDriver'ı aramaya çalış
+            chromedriver_path = "chromedriver"
+        
+        logger.info(f"Selenium ile çıkarma deneniyor: {url}")
+        
+        # Chrome Options ayarlamaları
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # Başsız modda çalıştır
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--mute-audio")
+        chrome_options.add_argument(f"user-agent={USER_AGENT}")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        
+        # WebDriver'ı başlat
+        try:
+            service = Service(chromedriver_path)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            logger.error(f"Chrome Driver başlatma hatası: {e}")
+            return None
+        
+        try:
+            # Zaman aşımı ayarları
+            driver.set_page_load_timeout(30)
+            driver.implicitly_wait(5)
+            
+            # Sayfayı yükle
+            driver.get(url)
+            logger.info(f"Sayfa yüklendi: {url}")
+            
+            # Sayfa yüklendikten sonra biraz bekle - JavaScript yüklensin
+            time.sleep(5)
+            
+            # Network trafiğini analiz etmek için JavaScript çalıştır
+            script = """
+            var videoSources = [];
+            
+            // Video etiketlerindeki src'leri al
+            var videoElements = document.querySelectorAll('video');
+            for(var i=0; i<videoElements.length; i++) {
+                var src = videoElements[i].src;
+                if(src && (src.includes('.m3u') || src.includes('.m3u8'))) {
+                    videoSources.push(src);
+                }
+                
+                // Video içindeki source etiketlerini kontrol et
+                var sources = videoElements[i].querySelectorAll('source');
+                for(var j=0; j<sources.length; j++) {
+                    src = sources[j].src;
+                    if(src && (src.includes('.m3u') || src.includes('.m3u8'))) {
+                        videoSources.push(src);
+                    }
+                }
+            }
+            
+            // iframe'leri kontrol et
+            var iframes = document.querySelectorAll('iframe');
+            var iframeSrcs = [];
+            for(var i=0; i<iframes.length; i++) {
+                iframeSrcs.push(iframes[i].src);
+            }
+            
+            // HLS.js veya video.js tanımlarını arat
+            var hlsJsUrls = [];
+            var scripts = document.querySelectorAll('script');
+            for(var i=0; i<scripts.length; i++) {
+                var scriptContent = scripts[i].innerText;
+                if(scriptContent) {
+                    // Yaygın HLS/DASH URL formatlarını kontrol et
+                    var m3u8Regex = /(["'])(https?:\\/\\/[^"']+\\.m3u8[^"']*)(\\1)/g;
+                    var match;
+                    while((match = m3u8Regex.exec(scriptContent)) !== null) {
+                        hlsJsUrls.push(match[2]);
+                    }
+                }
+            }
+            
+            return {
+                videoSources: videoSources,
+                iframeSrcs: iframeSrcs,
+                hlsJsUrls: hlsJsUrls
+            };
+            """
+            
+            result = driver.execute_script(script)
+            
+            # Sonuçları analiz et
+            if result:
+                # 1. Önce doğrudan video kaynaklarını kontrol et
+                if result.get('videoSources') and len(result.get('videoSources')) > 0:
+                    for src in result.get('videoSources'):
+                        if '.m3u' in src:
+                            logger.info(f"Video kaynağından m3u bulundu: {src}")
+                            driver.quit()
+                            return src
+                
+                # 2. HLS.js veya video.js URL'lerini kontrol et
+                if result.get('hlsJsUrls') and len(result.get('hlsJsUrls')) > 0:
+                    for src in result.get('hlsJsUrls'):
+                        if '.m3u' in src:
+                            logger.info(f"Script içeriğinden m3u bulundu: {src}")
+                            driver.quit()
+                            return src
+                
+                # 3. iframe'leri kontrol et
+                if result.get('iframeSrcs') and len(result.get('iframeSrcs')) > 0:
+                    logger.info(f"Toplam {len(result.get('iframeSrcs'))} iframe bulundu")
+                    iframe_sources = result.get('iframeSrcs')
+                    
+                    for iframe_src in iframe_sources:
+                        if iframe_src and iframe_src.strip():
+                            try:
+                                # iframe'e git
+                                driver.get(iframe_src)
+                                logger.info(f"iframe yüklendi: {iframe_src}")
+                                time.sleep(3)  # iframe yüklensin
+                                
+                                # iframe içinde m3u8 ara
+                                iframe_result = driver.execute_script(script)
+                                
+                                if iframe_result:
+                                    # iframe içindeki video kaynaklarını kontrol et
+                                    if iframe_result.get('videoSources') and len(iframe_result.get('videoSources')) > 0:
+                                        for src in iframe_result.get('videoSources'):
+                                            if '.m3u' in src:
+                                                logger.info(f"iframe video kaynağından m3u bulundu: {src}")
+                                                driver.quit()
+                                                return src
+                                    
+                                    # iframe içindeki HLS.js URL'lerini kontrol et
+                                    if iframe_result.get('hlsJsUrls') and len(iframe_result.get('hlsJsUrls')) > 0:
+                                        for src in iframe_result.get('hlsJsUrls'):
+                                            if '.m3u' in src:
+                                                logger.info(f"iframe script içeriğinden m3u bulundu: {src}")
+                                                driver.quit()
+                                                return src
+                            except Exception as iframe_error:
+                                logger.warning(f"iframe işlenirken hata: {iframe_error}")
+            
+            # HAR dosyası oluştur ve içinden m3u8 URL'leri ara
+            try:
+                # Performance loglarını al
+                logs = driver.execute_script("""
+                    var performance = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance || {};
+                    var network = performance.getEntries() || [];
+                    return network;
+                """)
+                
+                # Network trafiğinde m3u8 URL'lerini ara
+                if logs:
+                    for entry in logs:
+                        name = entry.get('name', '')
+                        if name and ('.m3u8' in name or '.m3u' in name):
+                            logger.info(f"Performance loglarından m3u bulundu: {name}")
+                            driver.quit()
+                            return name
+            except Exception as perf_error:
+                logger.warning(f"Performance logları alınırken hata: {perf_error}")
+            
+            # Hiçbir şey bulunamadı
+            logger.warning(f"Selenium ile m3u URL bulunamadı: {url}")
+            driver.quit()
+            return None
+            
+        except Exception as browse_error:
+            logger.error(f"Sayfa gezinme hatası: {browse_error}")
+            driver.quit()
+            return None
+            
+    except Exception as e:
+        logger.error(f"Selenium ile çıkarma hatası: {str(e)}")
+        return None
 
 def create_m3u_file(channels):
     """Toplanan kanal bilgilerinden m3u dosyası oluşturur."""
