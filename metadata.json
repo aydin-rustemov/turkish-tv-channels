@@ -1,6 +1,43 @@
 {
-  "last_updated": "2025-03-20T16:57:59.140328",
-  "channel_count": 0,
-  "valid_channels": 0,
-  "channels": []
+  "last_updated": "2025-03-20T17:08:00.581971",
+  "channel_count": 9,
+  "valid_channels": 9,
+  "channels": [
+    {
+      "name": "TRT 1",
+      "url": "https://www.canlitv.me/canli-izle/trt-1"
+    },
+    {
+      "name": "TRT 2",
+      "url": "https://www.canlitv.me/canli-izle/trt-2"
+    },
+    {
+      "name": "TRT Haber",
+      "url": "https://www.canlitv.me/canli-izle/trt-haber"
+    },
+    {
+      "name": "Kanal D",
+      "url": "https://www.canlitv.me/canli-izle/kanal-d"
+    },
+    {
+      "name": "TV8",
+      "url": "https://www.canlitv.me/canli-izle/tv8"
+    },
+    {
+      "name": "TRT Belgesel",
+      "url": "https://www.canlitv.me/canli-izle/trt-belgesel"
+    },
+    {
+      "name": "TRT Müzik",
+      "url": "https://www.canlitv.me/canli-izle/trt-muzik"
+    },
+    {
+      "name": "TRT Avaz",
+      "url": "https://www.canlitv.me/canli-izle/trt-avaz"
+    },
+    {
+      "name": "TRT Kurdî",
+      "url": "https://www.canlitv.me/canli-izle/trt-kurdi"
+    }
+  ]
 }
