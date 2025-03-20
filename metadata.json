@@ -1,59 +1,127 @@
 {
-  "last_updated": "2025-03-20T18:02:27.849717",
-  "channel_count": 33,
-  "valid_channels": 8,
+  "last_updated": "2025-03-20T19:57:04.379575",
+  "channel_count": 128,
+  "valid_channels": 74,
   "channels": [
     {
       "name": "TRT 1",
-      "url": "https://www.canlitv.vin/blog/trt-1-sifresiz-nasil-izlenir"
-    },
-    {
-      "name": "Kanal D",
-      "url": "https://www.canlitv.vin/kanal-d-canli-yayin"
-    },
-    {
-      "name": "TRT Spor Sifresiz Nasil NIR",
-      "url": "https://www.canlitv.vin/blog/trt-spor-sifresiz-nasil-izlenir"
+      "url": "https://www.canlitv.vin/trt1-canliyayin"
     },
     {
       "name": "FOX 1",
       "url": "https://www.canlitv.vin/fox-tv-canli-hd-1"
     },
     {
-      "name": "N",
-      "url": "https://www.canlitv.vin/ntvcanli-izle"
+      "name": "Show Turk",
+      "url": "https://www.canlitv.vin/show-turk-canli-hd"
     },
     {
-      "name": "100",
-      "url": "https://www.canlitv.vin/tv100-izle"
+      "name": "Kanal D",
+      "url": "https://www.canlitv.vin/kanal-d-canli-yayin"
     },
     {
-      "name": "8",
-      "url": "https://www.canlitv.vin/tv8canli-hd"
+      "name": "Show",
+      "url": "https://www.canlitv.vin/showtvcanli"
     },
     {
-      "name": "AZ",
-      "url": "https://www.canlitv.vin/az-tv-canli"
+      "name": "Show MAX",
+      "url": "https://www.canlitv.vin/show-max-canli-hd"
     },
     {
-      "name": "Bloomberg HT",
-      "url": "https://www.canlitv.vin/bloomberg-ht-canli-hd"
+      "name": "TRT Belgesel",
+      "url": "https://www.canlitv.vin/trt-belgesel"
+    },
+    {
+      "name": "FOX Yayin",
+      "url": "https://www.canlitv.vin/fox-tv-canli-yayin"
+    },
+    {
+      "name": "Eurostar",
+      "url": "https://www.canlitv.vin/eurostar-canli-hd"
+    },
+    {
+      "name": "Star Yayin",
+      "url": "https://www.canlitv.vin/startvcanli-yayin"
+    },
+    {
+      "name": "TRT Haber",
+      "url": "https://www.canlitv.vin/trt-haber"
+    },
+    {
+      "name": "TRT Cocuk",
+      "url": "https://www.canlitv.vin/trt-cocuk"
+    },
+    {
+      "name": "Star",
+      "url": "https://www.canlitv.vin/star-tv-canli"
+    },
+    {
+      "name": "Trtspor",
+      "url": "https://www.canlitv.vin/trtspor-canli-hd"
+    },
+    {
+      "name": "Kanal7",
+      "url": "https://www.canlitv.vin/kanal7-canli"
+    },
+    {
+      "name": "Tgrt EU",
+      "url": "https://www.canlitv.vin/tgrt-eu"
+    },
+    {
+      "name": "ARD",
+      "url": "https://www.canlitv.vin/ard-live"
+    },
+    {
+      "name": "Haberturk",
+      "url": "https://www.canlitv.vin/haberturkcanli"
     },
     {
       "name": "Xezer",
       "url": "https://www.canlitv.vin/xezer-tv-izle"
     },
     {
+      "name": "N",
+      "url": "https://www.canlitv.vin/ntvcanli-izle"
+    },
+    {
+      "name": "Cbcsport Yayin",
+      "url": "https://www.canlitv.vin/cbcsport-canli-yayin"
+    },
+    {
+      "name": "Yaban",
+      "url": "https://www.canlitv.vin/yaban-tv"
+    },
+    {
       "name": "A",
       "url": "https://www.canlitv.vin/atvcanli-hdizle"
+    },
+    {
+      "name": "Bein Sports Haber",
+      "url": "https://www.canlitv.vin/bein-sports-haber"
+    },
+    {
+      "name": "Tjkd",
+      "url": "https://www.canlitv.vin/tjktvcanlihdd"
+    },
+    {
+      "name": "100",
+      "url": "https://www.canlitv.vin/tv100-izle"
     },
     {
       "name": "Idman",
       "url": "https://www.canlitv.vin/idmantv-canli"
     },
     {
-      "name": "Ictimai",
-      "url": "https://www.canlitv.vin/ictimai-tv-canli"
+      "name": "Benguturk",
+      "url": "https://www.canlitv.vin/benguturk-tv"
+    },
+    {
+      "name": "N Yayin",
+      "url": "https://www.canlitv.vin/ntv-canli-yayin"
+    },
+    {
+      "name": "Ulusal Kanal",
+      "url": "https://www.canlitv.vin/ulusal-kanal"
     },
     {
       "name": "Sports",
@@ -64,8 +132,188 @@
       "url": "https://www.canlitv.vin/cnn-turk-canli-hd"
     },
     {
+      "name": "Meltem",
+      "url": "https://www.canlitv.vin/meltem-tv"
+    },
+    {
+      "name": "Prosieben",
+      "url": "https://www.canlitv.vin/prosieben-live"
+    },
+    {
+      "name": "Haber Global",
+      "url": "https://www.canlitv.vin/haber-global"
+    },
+    {
+      "name": "Kanal 24",
+      "url": "https://www.canlitv.vin/kanal-24"
+    },
+    {
+      "name": "FB",
+      "url": "https://www.canlitv.vin/fb-tv"
+    },
+    {
+      "name": "8",
+      "url": "https://www.canlitv.vin/tv8canli-hd"
+    },
+    {
+      "name": "Minika GO",
+      "url": "https://www.canlitv.vin/minika-go-tv"
+    },
+    {
+      "name": "HT Spor",
+      "url": "https://www.canlitv.vin/ht-spor-canli"
+    },
+    {
+      "name": "Cartoon Network",
+      "url": "https://www.canlitv.vin/cartoon-network"
+    },
+    {
+      "name": "Tivibuspor",
+      "url": "https://www.canlitv.vin/tivibuspor-izle"
+    },
+    {
+      "name": "8 5",
+      "url": "https://www.canlitv.vin/tv8-5-canli"
+    },
+    {
+      "name": "GZT",
+      "url": "https://www.canlitv.vin/gzt-tv"
+    },
+    {
+      "name": "Ictimai",
+      "url": "https://www.canlitv.vin/ictimai-tv-canli"
+    },
+    {
+      "name": "360",
+      "url": "https://www.canlitv.vin/tv-360"
+    },
+    {
+      "name": "Beyaz",
+      "url": "https://www.canlitv.vin/beyaz-tv"
+    },
+    {
+      "name": "Bloomberg HT",
+      "url": "https://www.canlitv.vin/bloomberg-ht-canli-hd"
+    },
+    {
+      "name": "A Haber",
+      "url": "https://www.canlitv.vin/a-haber"
+    },
+    {
+      "name": "A Para",
+      "url": "https://www.canlitv.vin/a-para"
+    },
+    {
+      "name": "Rehber",
+      "url": "https://www.canlitv.vin/rehber-tv-izle"
+    },
+    {
+      "name": "Semerkand",
+      "url": "https://www.canlitv.vin/semerkand-tv"
+    },
+    {
+      "name": "Aazad",
+      "url": "https://www.canlitv.vin/atvazad-canli"
+    },
+    {
+      "name": "AZ",
+      "url": "https://www.canlitv.vin/az-tv-canli"
+    },
+    {
+      "name": "NOW",
+      "url": "https://www.canlitv.vin/now-tv-canli"
+    },
+    {
+      "name": "Tgrt Belgesel",
+      "url": "https://www.canlitv.vin/tgrt-belgesel"
+    },
+    {
+      "name": "Minika Cocuk",
+      "url": "https://www.canlitv.vin/minika-cocuk-tv"
+    },
+    {
+      "name": "Teve2",
+      "url": "https://www.canlitv.vin/teve2-canli"
+    },
+    {
+      "name": "Halk",
+      "url": "https://www.canlitv.vin/halk-tv"
+    },
+    {
+      "name": "NET",
+      "url": "https://www.canlitv.vin/tvnet"
+    },
+    {
+      "name": "D MAX",
+      "url": "https://www.canlitv.vin/d-max"
+    },
+    {
       "name": "A2 Kesintisiz",
       "url": "https://www.canlitv.vin/a2-canli-kesintisiz"
+    },
+    {
+      "name": "Eurdo",
+      "url": "https://www.canlitv.vin/eurdocanli"
+    },
+    {
+      "name": "Tbmm",
+      "url": "https://www.canlitv.vin/tbmm-tv"
+    },
+    {
+      "name": "Tgrthaber",
+      "url": "https://www.canlitv.vin/tgrthaber-canli"
+    },
+    {
+      "name": "Ulke",
+      "url": "https://www.canlitv.vin/ulke-tv-canli"
+    },
+    {
+      "name": "TLC",
+      "url": "https://www.canlitv.vin/tlc-canli"
+    },
+    {
+      "name": "KRT",
+      "url": "https://www.canlitv.vin/krt-tv"
+    },
+    {
+      "name": "Aspor",
+      "url": "https://www.canlitv.vin/aspor-canli"
+    },
+    {
+      "name": "Tele1",
+      "url": "https://www.canlitv.vin/tele1-tv-izle"
+    },
+    {
+      "name": "Saban",
+      "url": "https://www.canlitv.vin/saban-tv"
+    },
+    {
+      "name": "CEM",
+      "url": "https://www.canlitv.vin/cem-tv"
+    },
+    {
+      "name": "GS",
+      "url": "https://www.canlitv.vin/gs-tv"
+    },
+    {
+      "name": "A Avrupa 6",
+      "url": "https://www.canlitv.vin/atv-avrupa-6"
+    },
+    {
+      "name": "Cnbce",
+      "url": "https://www.canlitv.vin/cnbce-canli"
+    },
+    {
+      "name": "Sozcu",
+      "url": "https://www.canlitv.vin/sozcu-tv"
+    },
+    {
+      "name": "TJK",
+      "url": "https://www.canlitv.vin/tjk-tv-canli-hd-izle"
+    },
+    {
+      "name": "Flash Haber",
+      "url": "https://www.canlitv.vin/flash-haber-canli"
     }
   ]
 }
