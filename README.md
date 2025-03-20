@@ -1,6 +1,6 @@
 # Türk ve Azerbaycan TV Kanalları M3U Listesi
 
-Bu repo, [canlitv.me](https://www.canlitv.me/hd1) sitesinden Türk ve Azerbaycan TV kanallarının M3U linklerini otomatik olarak derleyen bir sistem içerir.
+Bu repo, Türk ve Azerbaycan TV kanallarının M3U linklerini otomatik olarak derleyen bir sistem içerir.
 
 ## Özellikler
 
