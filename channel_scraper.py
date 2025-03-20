@@ -18,89 +18,87 @@ BASE_URL = "https://www.canlitv.me/hd1"
 OUTPUT_FILE = "kanallar.m3u"
 METADATA_FILE = "metadata.json"
 
+# Bilinen m3u linkleri - bu liste periyodik olarak güncellenebilir
+KNOWN_CHANNELS = [
+    {"name": "TRT 1", "url": "https://www.canlitv.me/canli-izle/trt-1", "m3u_url": "https://tv-trt1.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT 2", "url": "https://www.canlitv.me/canli-izle/trt-2", "m3u_url": "https://tv-trt2.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT Spor", "url": "https://www.canlitv.me/canli-izle/trt-spor", "m3u_url": "https://tv-trtspor1.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT Haber", "url": "https://www.canlitv.me/canli-izle/trt-haber", "m3u_url": "https://tv-trthaber.medya.trt.com.tr/master.m3u8"},
+    {"name": "ATV", "url": "https://www.canlitv.me/canli-izle/atv", "m3u_url": "https://trkvz-live.ercdn.net/atvhd/atvhd.m3u8"},
+    {"name": "Star TV", "url": "https://www.canlitv.me/canli-izle/star-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/startv/index.m3u8"},
+    {"name": "Show TV", "url": "https://www.canlitv.me/canli-izle/show-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/showtv/index.m3u8"},
+    {"name": "Kanal D", "url": "https://www.canlitv.me/canli-izle/kanal-d", "m3u_url": "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web&ce=3"},
+    {"name": "FOX TV", "url": "https://www.canlitv.me/canli-izle/fox-tv", "m3u_url": "https://foxtv.blutv.com/blutv_foxtv_live/live.m3u8"},
+    {"name": "TV8", "url": "https://www.canlitv.me/canli-izle/tv8", "m3u_url": "https://tv8-live.daioncdn.net/tv8/tv8.m3u8"},
+    {"name": "CNN Türk", "url": "https://www.canlitv.me/canli-izle/cnn-turk", "m3u_url": "https://live.duhnet.tv/S2/HLS_LIVE/cnnturknp/playlist.m3u8"},
+    {"name": "Habertürk", "url": "https://www.canlitv.me/canli-izle/haberturk", "m3u_url": "https://tv.ensonhaber.com/tv/tr/haberturk/index.m3u8"},
+    {"name": "A Haber", "url": "https://www.canlitv.me/canli-izle/a-haber", "m3u_url": "https://trkvz-live.ercdn.net/ahaberhd/ahaberhd.m3u8"},
+    {"name": "NTV", "url": "https://www.canlitv.me/canli-izle/ntv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/ntv/index.m3u8"},
+    {"name": "TRT Belgesel", "url": "https://www.canlitv.me/canli-izle/trt-belgesel", "m3u_url": "https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT Çocuk", "url": "https://www.canlitv.me/canli-izle/trt-cocuk", "m3u_url": "https://tv-trtcocuk.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT Müzik", "url": "https://www.canlitv.me/canli-izle/trt-muzik", "m3u_url": "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"},
+    {"name": "Kanal 7", "url": "https://www.canlitv.me/canli-izle/kanal-7", "m3u_url": "https://live.kanal7.com/live/kanal7LiveDesktop/index.m3u8"},
+    {"name": "TGRT Haber", "url": "https://www.canlitv.me/canli-izle/tgrt-haber", "m3u_url": "https://tv.ensonhaber.com/tv/tr/tgrthaber/index.m3u8"},
+    {"name": "A2", "url": "https://www.canlitv.me/canli-izle/a2", "m3u_url": "https://trkvz-live.ercdn.net/a2hd/a2hd.m3u8"},
+    {"name": "TRT Avaz", "url": "https://www.canlitv.me/canli-izle/trt-avaz", "m3u_url": "https://tv-trtavaz.medya.trt.com.tr/master.m3u8"},
+    {"name": "TRT Kurdî", "url": "https://www.canlitv.me/canli-izle/trt-kurdi", "m3u_url": "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8"},
+    {"name": "Beyaz TV", "url": "https://www.canlitv.me/canli-izle/beyaz-tv", "m3u_url": "https://tv.ensonhaber.com/tv/tr/beyaztv/index.m3u8"},
+    # Azerbaycan kanalları
+    {"name": "ATV Azerbaycan", "url": "https://www.canlitv.me/canli-izle/atv-azerbaycan", "m3u_url": "http://85.132.81.184:8080/atv/index.m3u8"},
+    {"name": "İctimai TV", "url": "https://www.canlitv.me/canli-izle/ictimai-tv", "m3u_url": "https://insanhaqtv.livebox.co.in/manastvindia/livehls/channel3.m3u8"},
+    {"name": "CBC Sport", "url": "https://www.canlitv.me/canli-izle/cbc-sport", "m3u_url": "https://59c7ea6bec1c6.streamlock.net/live/cbcsport.stream/playlist.m3u8"},
+    {"name": "ARB TV", "url": "https://www.canlitv.me/canli-izle/arb-tv", "m3u_url": "http://85.132.81.184:8080/arb/live/index.m3u8"},
+    {"name": "Space TV", "url": "https://www.canlitv.me/canli-izle/space-tv-azerbaycan", "m3u_url": "http://150.253.219.25:8888/live/Feed222/index.m3u8"}
+]
+
 def get_channels():
     """Ana sayfadan tüm kanal bağlantılarını alır."""
-    headers = {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0',
-    }
-    
     try:
+        headers = {
+            'User-Agent': USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+        }
+        
         response = requests.get(BASE_URL, headers=headers)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         logger.info(f"HTML içeriği alındı: {len(response.text)} byte")
         
-        # Tüm kanal linklerini bul
+        # Sayfadan tüm linkleri al
         all_links = soup.find_all('a', href=True)
-        channel_links = []
         
-        # Azerbaycan ve Türk kanallarını belirlemek için aranacak kelimeler
-        tr_az_keywords = ['trt', 'a haber', 'atv', 'kanal d', 'show tv', 'star tv', 'fox', 'tv8', 
-                       'ntv', 'cnn türk', 'haberturk', 'kanal 7', 'beyaz tv', 'tv 100',
-                       'azerbaycan', 'azad', 'ictimai', 'idman', 'azərbaycan', 'aztv', 'cbc sport']
+        # Debug için bazı bilgileri kaydet
+        logger.info(f"Toplam link sayısı: {len(all_links)}")
+        channel_candidates = [l['href'] for l in all_links if '/izle/' in l['href'] or '/canli/' in l['href']]
+        logger.info(f"Potansiyel kanal linkleri: {len(channel_candidates)}")
+        logger.info(f"Örnek linkler: {channel_candidates[:5] if channel_candidates else 'Yok'}")
         
-        for link in all_links:
-            href = link.get('href')
-            if not href:
-                continue
-                
-            # Kanal linklerini filtrele
-            if '/izle/' in href or '/canli/' in href:
-                if not href.startswith('http'):
-                    href = f"https://www.canlitv.me{href}" if href.startswith('/') else f"https://www.canlitv.me/{href}"
-                
-                # Kanal ismini al
-                channel_name = href.split('/')[-1].replace('-', ' ').title()
-                
-                # Türk ve Azerbaycan kanallarını filtrele
-                is_tr_az_channel = False
-                for keyword in tr_az_keywords:
-                    if keyword.lower() in channel_name.lower():
-                        is_tr_az_channel = True
-                        break
-                
-                # Doğrudan azeri ve türk kanal linkleri zaten eklenebilir
-                if 'azeri' in href.lower() or 'turk' in href.lower() or is_tr_az_channel:
-                    channel_links.append({'name': channel_name, 'url': href})
-                    logger.info(f"Kanal bulundu: {channel_name} - {href}")
-                    
-        # Hiç kanal bulunamadıysa tüm linkleri kullan
-        if not channel_links:
-            logger.warning("Filtreleme sonrası kanal bulunamadı, tüm kanal linklerini kullanıyoruz.")
-            for link in all_links:
-                href = link.get('href')
-                if href and ('/izle/' in href or '/canli/' in href):
-                    if not href.startswith('http'):
-                        href = f"https://www.canlitv.me{href}" if href.startswith('/') else f"https://www.canlitv.me/{href}"
-                    channel_name = href.split('/')[-1].replace('-', ' ').title()
-                    channel_links.append({'name': channel_name, 'url': href})
+        # Bilinen kanalları döndür
+        logger.info(f"Bilinen {len(KNOWN_CHANNELS)} kanal kullanılıyor")
+        return KNOWN_CHANNELS
         
-        logger.info(f"Toplam {len(channel_links)} kanal bulundu")
-        return channel_links
-    
     except Exception as e:
         logger.error(f"Kanal listesi alınırken hata oluştu: {e}")
-        return []
+        # Hata durumunda yine bilinen kanalları döndür
+        return KNOWN_CHANNELS
 
 def extract_m3u_url(channel_info):
-    """Kanal sayfasından m3u URL'sini çıkarır."""
-    headers = {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Referer': BASE_URL,
-    }
+    """Channel için m3u URL döndürür"""
+    # Kanal zaten m3u_url içeriyorsa onu kullan
+    if channel_info.get('m3u_url'):
+        logger.info(f"Bilinen M3U URL kullanılıyor: {channel_info['name']}")
+        return channel_info['m3u_url']
     
+    # Aksi halde web sayfasından çekmeye çalış
     try:
+        headers = {
+            'User-Agent': USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Referer': BASE_URL,
+        }
+        
         logger.info(f"İşleniyor: {channel_info['name']} - {channel_info['url']}")
         response = requests.get(channel_info['url'], headers=headers)
         response.raise_for_status()
@@ -152,22 +150,7 @@ def extract_m3u_url(channel_info):
             except Exception as e:
                 logger.warning(f"İframe içeriği alınırken hata: {e}")
         
-        # Direkt olarak video kaynaklarını ara
-        video_tags = soup.find_all('video')
-        for video in video_tags:
-            src = video.get('src')
-            if src and ('.m3u' in src or '.m3u8' in src):
-                logger.info(f"Video tag içinde M3U URL bulundu: {src}")
-                return src
-                
-            # Video içindeki source etiketlerini kontrol et
-            sources = video.find_all('source')
-            for source in sources:
-                src = source.get('src')
-                if src and ('.m3u' in src or '.m3u8' in src):
-                    logger.info(f"Video source tag içinde M3U URL bulundu: {src}")
-                    return src
-        
+        # M3U bulunamadı, null dön
         logger.warning(f"M3U URL bulunamadı: {channel_info['name']}")
         return None
         
@@ -221,13 +204,49 @@ def save_debug_html():
     except Exception as e:
         logger.error(f"HTML sayfası kaydedilirken hata: {e}")
 
+def check_m3u_urls():
+    """Listelenen m3u URL'lerinin geçerliliğini kontrol eder"""
+    valid_channels = []
+    invalid_channels = []
+    
+    for channel in KNOWN_CHANNELS:
+        if not channel.get('m3u_url'):
+            continue
+            
+        try:
+            response = requests.head(channel['m3u_url'], timeout=5)
+            if response.status_code < 400:
+                valid_channels.append(channel)
+                logger.info(f"Geçerli M3U URL: {channel['name']} - {channel['m3u_url']}")
+            else:
+                invalid_channels.append(channel)
+                logger.warning(f"Geçersiz M3U URL (HTTP {response.status_code}): {channel['name']} - {channel['m3u_url']}")
+        except Exception as e:
+            invalid_channels.append(channel)
+            logger.warning(f"M3U URL kontrolü hatası: {channel['name']} - {channel['m3u_url']} - {e}")
+    
+    logger.info(f"Geçerli M3U URL sayısı: {len(valid_channels)}/{len(KNOWN_CHANNELS)}")
+    return valid_channels
+
 def main():
     logger.info("Kanal çekme işlemi başlıyor...")
     
     # Hata ayıklama için sayfayı kaydet
     save_debug_html()
     
-    # Kanalları al
+    # Önce bilinen kanalları kontrol et
+    valid_known_channels = check_m3u_urls()
+    
+    if valid_known_channels:
+        logger.info(f"{len(valid_known_channels)} geçerli kanal bulundu, web sitesinden ek kanal aranmayacak")
+        # M3U dosyasını oluştur
+        create_m3u_file(valid_known_channels)
+        # Metadata dosyasını oluştur
+        create_metadata(valid_known_channels, len(valid_known_channels))
+        logger.info("İşlem tamamlandı!")
+        return True
+    
+    # Geçerli bilinen kanal yoksa web sitesinden kanalları al
     channels = get_channels()
     
     if not channels:
@@ -236,7 +255,8 @@ def main():
     
     # Her kanal için m3u URL'sini çıkar
     for i, channel in enumerate(channels):
-        channel['m3u_url'] = extract_m3u_url(channel)
+        if not channel.get('m3u_url'):  # Zaten m3u_url yoksa ekle
+            channel['m3u_url'] = extract_m3u_url(channel)
         
         # Her 3 kanalda bir 2 saniye bekle (site koruması için)
         if (i + 1) % 3 == 0:
@@ -252,9 +272,6 @@ def main():
     
     if valid_count == 0:
         logger.error("Hiç geçerli M3U URL'si bulunamadı!")
-        # Debugging için tüm kanalları listele
-        for channel in channels:
-            logger.info(f"Kanal: {channel['name']} - {channel['url']}")
         return False
     
     # M3U dosyasını oluştur
